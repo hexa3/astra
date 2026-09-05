@@ -30,4 +30,9 @@ try {
   await query.fill('Collapse sidebar'); await query.press('Enter');
   await chrome.getByRole('button', { name: 'Expand sidebar' }).waitFor();
   console.log(JSON.stringify({ timestamp: new Date().toISOString(), ...runtime, launched: true, rendered: true, isolated: true, licenses: true, commandBar: true }, null, 2));
+} catch (error) {
+  const chrome = await app.firstWindow();
+  console.error('Packaged check state:', await chrome.evaluate(() => window.astra.snapshot()));
+  console.error('Packaged chrome:', await chrome.locator('body').innerText());
+  throw error;
 } finally { await app.close(); await new Promise(resolve => server.close(resolve)); }
