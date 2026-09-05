@@ -47,6 +47,10 @@
     "appId": "org.astra.browser",
     "files": ["dist/**", "package.json"],
     "asarUnpack": ["node_modules/better-sqlite3/**"],
+    "extraResources": [
+      {"from": "LICENSE", "to": "licenses/ASTRA-MIT.txt"},
+      {"from": "LICENSES", "to": "licenses"}
+    ],
     "directories": {"output": "release"},
     "publish": null,
     "linux": {"target": ["AppImage", "deb"], "category": "Network", "maintainer": "Astra contributors", "syncDesktopName": true},

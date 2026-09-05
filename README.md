@@ -2,6 +2,11 @@
 
 A quiet, open browser. Local by default. Yours by design.
 
+Astra's own source is MIT-licensed. Bundled components keep their respective
+licenses; the Doto font is distributed under the [SIL Open Font License](LICENSES/Doto-OFL.txt).
+Packages include these notices under `resources/licenses` alongside Electron's
+own license files.
+
 Astra is an MIT-licensed Electron + Svelte browser under active construction.
 It is not yet a stable release. Verified milestones and limitations live in
 [the build log](docs/progress-log.md); architecture lives in
