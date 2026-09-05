@@ -6,11 +6,14 @@ import { randomUUID } from 'node:crypto';
 import { Vault } from './storage';
 import { installPrivacy } from './privacy';
 import { Hibernator } from './hibernation';
+import { requestPageClose } from './lifecycle';
 import { isWebURL, resolveAddress } from '../shared/navigation';
 import type { BrowserState, Command, Entry, Tab } from '../shared/types';
 
 app.setName('Astra');
 if (!app.isPackaged && process.env.ASTRA_TEST_PROFILE) app.setPath('userData', process.env.ASTRA_TEST_PROFILE);
+const primaryInstance = app.requestSingleInstanceLock();
+if (!primaryInstance) app.quit();
 for (const flag of ['disable-background-networking', 'disable-component-update', 'disable-domain-reliability', 'disable-sync', 'disable-http-cache', 'no-pings', 'test-third-party-cookie-phaseout']) app.commandLine.appendSwitch(flag);
 app.commandLine.appendSwitch('disable-features', 'AutofillServerCommunication,MediaRouter,OptimizationHints,PrivacySandboxSettings4,InterestFeedContentSuggestions');
 app.commandLine.appendSwitch('force-webrtc-ip-handling-policy', 'disable_non_proxied_udp');
@@ -23,6 +26,9 @@ let hibernator: Hibernator;
 let metricsTimer: ReturnType<typeof setInterval> | undefined;
 let quitting = false;
 let unlockingVault = false;
+let closingWindow = false;
+const closingTabs = new Set<string>();
+const pendingURLs: string[] = [];
 let publishTimer: ReturnType<typeof setTimeout> | undefined;
 const views = new Map<string, WebContentsView>();
 const chromeURL = pathToFileURL(join(__dirname, '../renderer/index.html')).href;
@@ -153,11 +159,19 @@ function activateTab(id: string): void {
   layout(); publish(); contents()?.focus();
   hibernator.schedule();
 }
-function closeTab(id: string): void {
-  const index = state.tabs.findIndex(tab => tab.id === id);
+async function closeTab(id: string): Promise<void> {
+  if (closingTabs.has(id)) return;
+  let index = state.tabs.findIndex(tab => tab.id === id);
   if (index < 0) return;
   const view = views.get(id);
-  if (view) { win.contentView.removeChildView(view); view.webContents.close(); views.delete(id); }
+  if (view) {
+    closingTabs.add(id);
+    try { if (!await requestPageClose(view.webContents, win)) return; }
+    finally { closingTabs.delete(id); }
+    win.contentView.removeChildView(view); views.delete(id);
+  }
+  index = state.tabs.findIndex(tab => tab.id === id);
+  if (index < 0) return;
   state.tabs.splice(index, 1);
   hibernator.forget(id);
   if (!state.tabs.length) newTab();
@@ -218,7 +232,7 @@ async function dispatch(command: Command): Promise<void> {
     }
     case 'new-tab': newTab(resolveAddress(command.url ?? '')); break;
     case 'activate-tab': activateTab(command.id); break;
-    case 'close-tab': closeTab(command.id); break;
+    case 'close-tab': await closeTab(command.id); break;
     case 'back': if (wc?.navigationHistory.canGoBack()) wc.navigationHistory.goBack(); break;
     case 'forward': if (wc?.navigationHistory.canGoForward()) wc.navigationHistory.goForward(); break;
     case 'reload': if (active()) { active()!.error = undefined; layout(); wc?.reload(); } break;
@@ -233,6 +247,7 @@ async function dispatch(command: Command): Promise<void> {
   publish();
 }
 app.whenReady().then(async () => {
+  if (!primaryInstance) return;
   vault = new Vault(join(app.getPath('userData'), 'vault'));
   state = { tabs: [], activeId: '', bookmarks: vault.get<Entry[]>('bookmarks', []), history: vault.get<Entry[]>('history', []), storage: vault.mode, storageMessage: vault.message, vaultLocked: vault.locked, theme: vault.get('theme', 'system'), panel: 'none', backgroundLimit: vault.get('background-limit', 6) };
   nativeTheme.themeSource = state.theme;
@@ -243,7 +258,7 @@ app.whenReady().then(async () => {
   hibernator = new Hibernator(() => state, views, view => { if (!win.isDestroyed()) win.contentView.removeChildView(view); }, () => {
     if (!quitting && active()?.suspended && !views.has(state.activeId)) activateTab(state.activeId);
     layout(); publish();
-  });
+  }, id => closingWindow || closingTabs.has(id));
   metricsTimer = setInterval(() => {
     const metrics = new Map(app.getAppMetrics().map(metric => [metric.pid, metric]));
     for (const tab of state.tabs) {
@@ -261,7 +276,22 @@ app.whenReady().then(async () => {
   ipcMain.handle('astra:snapshot', event => { authorize(event); return state; });
   ipcMain.handle('astra:command', async (event, command) => { authorize(event); await dispatch(validate(command)); });
   win.on('resize', layout);
-  win.on('close', () => { persist(); quitting = true; hibernator.stop(); for (const view of views.values()) view.webContents.close(); });
+  win.on('close', event => {
+    if (quitting) return;
+    event.preventDefault();
+    if (closingWindow) return;
+    closingWindow = true;
+    void (async () => {
+      for (const [id, view] of views) {
+        if (!await requestPageClose(view.webContents, win)) {
+          closingWindow = false; activateTab(state.activeId); return;
+        }
+        win.contentView.removeChildView(view); views.delete(id);
+        const tab = state.tabs.find(tab => tab.id === id); if (tab) tab.suspended = true;
+      }
+      persist(); quitting = true; hibernator.stop(); win.destroy();
+    })().catch(() => { closingWindow = false; activateTab(state.activeId); });
+  });
   const saved = vault.get<{ url: string; title: string }[]>('session', []);
   // Saved pages restore on explicit activation; startup makes no website requests.
   newTab();
@@ -271,7 +301,19 @@ app.whenReady().then(async () => {
   persist();
   await win.loadURL(chromeURL);
   win.show();
+  for (const url of [...process.argv.filter(isWebURL), ...pendingURLs]) newTab(url);
+  pendingURLs.length = 0;
   if (!app.isPackaged && process.env.ASTRA_SMOKE_URL) await dispatch({ type: 'navigate', url: process.env.ASTRA_SMOKE_URL });
 }).catch(error => { console.error('Astra startup failed:', error); app.exit(1); });
+app.on('second-instance', (_event, argv) => {
+  if (!win || win.isDestroyed()) { pendingURLs.push(...argv.filter(isWebURL)); return; }
+  if (win.isMinimized()) win.restore(); win.focus();
+  for (const url of argv.filter(isWebURL)) newTab(url);
+});
+app.on('open-url', (event, url) => {
+  event.preventDefault(); if (!isWebURL(url)) return;
+  if (win && !win.isDestroyed() && state) newTab(url); else pendingURLs.push(url);
+});
+app.on('before-quit', event => { if (!quitting && win && !win.isDestroyed()) { event.preventDefault(); win.close(); } });
 app.on('window-all-closed', () => app.quit());
 app.on('will-quit', () => { if (publishTimer) clearTimeout(publishTimer); if (metricsTimer) clearInterval(metricsTimer); hibernator?.stop(); vault?.close(); });

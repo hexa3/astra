@@ -18,3 +18,7 @@ Live HTTPS rendering passed against example.com at 13:51:46 UTC. Passphrase-encr
 ## 2026-09-05 14:08 UTC — first downloadable alpha
 
 AppImage and Debian packages now build successfully. Direct AppImage launch passed at 14:07:35 UTC, with sandbox enabled and an isolated profile. The full suite passes again after the esbuild update; npm audit reports zero findings. Debian's archive is valid, but installation on Debian has not been tested. Publishing `v0.1.0` as an explicitly limited Linux alpha with SHA-256 hashes. This is an additional early release, not the four-hour checkpoint tag. Next: hibernation and lifecycle protection, then workspaces/command bar/split once this foundation remains green.
+
+## 2026-09-05 14:27 UTC — lifecycle investigation
+
+The Linux alpha upload completed and is public. On `hour0-tab-lifecycle`, hibernation now passes native-view destruction, history restoration, embedded-draft protection and measured-memory tests. Single-instance URL handoff also passes. A new close-confirmation test fails: the native page closes after the test supplies Stay despite an activated beforeunload handler. Investigating Electron's WebContentsView lifecycle semantics; this branch has not been merged into main. The failing test is retained as evidence. Next: correct that behavior or explicitly narrow the feature before merging.

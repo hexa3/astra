@@ -18,7 +18,7 @@ export class Hibernator {
   private timer?: ReturnType<typeof setTimeout>;
   private running = false;
   private stopped = false;
-  constructor(private state: () => BrowserState, private views: Map<string, WebContentsView>, private detach: (view: WebContentsView) => void, private changed: () => void) {}
+  constructor(private state: () => BrowserState, private views: Map<string, WebContentsView>, private detach: (view: WebContentsView) => void, private changed: () => void, private protectedTab: (id: string) => boolean = () => false) {}
   schedule(): void {
     if (this.stopped || this.timer) return;
     this.timer = setTimeout(() => { this.timer = undefined; void this.enforce(); }, 300);
@@ -27,7 +27,7 @@ export class Hibernator {
     if (this.running || this.stopped) return;
     this.running = true;
     try {
-      const background = () => this.state().tabs.filter(tab => tab.id !== this.state().activeId && this.views.has(tab.id));
+      const background = () => this.state().tabs.filter(tab => tab.id !== this.state().activeId && !this.protectedTab(tab.id) && this.views.has(tab.id));
       const candidates = background().sort((a, b) => (a.lastActiveAt ?? 0) - (b.lastActiveAt ?? 0));
       for (const tab of candidates) {
         if (background().length <= this.state().backgroundLimit || this.stopped) break;
@@ -47,7 +47,7 @@ export class Hibernator {
       ]).finally(() => clearTimeout(inspectionTimer));
       const activity = activities[0];
       if (!activity || activities.some(activity => activity.edited)) { tab.suspensionReason = 'Unsaved form or editable content'; return; }
-      if (this.stopped || tab.id === this.state().activeId || wc.isDestroyed()) return;
+      if (this.stopped || tab.id === this.state().activeId || this.protectedTab(tab.id) || wc.isDestroyed()) return;
       const saved: SleepingPage = { entries: wc.navigationHistory.getAllEntries(), index: wc.navigationHistory.getActiveIndex(), x: activity.x, y: activity.y };
       await new Promise<void>(resolve => {
         const done = () => { clearTimeout(timeout); wc.removeListener('destroyed', destroyed); wc.removeListener('will-prevent-unload', prevented); resolve(); };
