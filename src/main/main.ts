@@ -7,6 +7,7 @@ import { Vault } from './storage';
 import { installPrivacy } from './privacy';
 import { Hibernator } from './hibernation';
 import { requestPageClose } from './lifecycle';
+import { createTab, restoreSavedTabs } from './session-state';
 import { isWebURL, resolveAddress } from '../shared/navigation';
 import { validateCommand } from '../shared/commands';
 import { DEFAULT_WORKSPACE, restoreWorkspaces, workspacePartition } from '../shared/workspaces';
@@ -56,7 +57,9 @@ function schedulePublish(): void {
   if (!publishTimer) publishTimer = setTimeout(() => { publishTimer = undefined; publish(); }, 100);
 }
 function persist(): void {
-  vault.set('session', state.tabs.map(({ url, title }) => ({ url, title })));
+  vault.set('session', state.tabs.map(({ id, url, title, workspaceId }) => ({ id, url, title, workspaceId })));
+  vault.set('workspaces', state.workspaces);
+  vault.set('active-workspace', state.activeWorkspaceId);
   vault.set('bookmarks', state.bookmarks);
   vault.set('history', state.history);
   vault.set('theme', state.theme);
@@ -157,8 +160,10 @@ function createView(tab: Tab): WebContentsView {
   return view;
 }
 function newTab(url = '', title = 'New tab'): void {
-  const tab: Tab = { id: randomUUID(), url, title, loading: false, canBack: false, canForward: false, requests: 0, blocked: 0, cookiesBlocked: 0, lastActiveAt: Date.now() };
+  const tab = createTab(url, title, state.activeWorkspaceId);
   state.tabs.push(tab); state.activeId = tab.id; state.panel = 'none';
+  const workspace = state.workspaces.find(workspace => workspace.id === state.activeWorkspaceId);
+  if (workspace) workspace.lastActiveTabId = tab.id;
   if (url) void createView(tab).webContents.loadURL(url).catch(() => {});
   layout(); publish(); persist();
   hibernator.schedule();
@@ -167,10 +172,22 @@ function activateTab(id: string): void {
   if (!state.tabs.some(tab => tab.id === id)) return;
   state.activeId = id; state.panel = 'none';
   const tab = active()!;
+  state.activeWorkspaceId = tab.workspaceId ?? DEFAULT_WORKSPACE.id;
+  const workspace = state.workspaces.find(workspace => workspace.id === state.activeWorkspaceId);
+  if (workspace) workspace.lastActiveTabId = id;
   tab.lastActiveAt = Date.now();
   if (tab.url && !views.has(id)) void hibernator.restore(tab, createView(tab)).catch(() => {});
   layout(); publish(); contents()?.focus();
   hibernator.schedule();
+}
+function switchWorkspace(id: string): void {
+  const workspace = state.workspaces.find(workspace => workspace.id === id);
+  if (!workspace) throw new Error('This workspace no longer exists.');
+  state.activeWorkspaceId = id;
+  const tabs = state.tabs.filter(tab => tab.workspaceId === id);
+  const target = tabs.find(tab => tab.id === workspace.lastActiveTabId) ?? tabs[0];
+  if (target) activateTab(target.id); else newTab();
+  persist();
 }
 async function closeTab(id: string): Promise<void> {
   if (closingTabs.has(id)) return;
@@ -187,8 +204,10 @@ async function closeTab(id: string): Promise<void> {
   if (index < 0) return;
   state.tabs.splice(index, 1);
   hibernator.forget(id);
-  if (!state.tabs.length) newTab();
-  else if (id === state.activeId) activateTab(state.tabs[Math.min(index, state.tabs.length - 1)].id);
+  if (id === state.activeId) {
+    const remaining = state.tabs.filter(tab => tab.workspaceId === state.activeWorkspaceId);
+    if (remaining.length) activateTab(remaining[Math.min(index, remaining.length - 1)].id); else newTab();
+  }
   layout(); publish(); persist();
 }
 function toggleBookmark(): void {
@@ -212,8 +231,10 @@ async function dispatch(command: Command): Promise<void> {
       state.bookmarks = merge(vault.get<Entry[]>('bookmarks', []), state.bookmarks);
       state.history = merge(vault.get<Entry[]>('history', []), state.history).slice(0, 2000);
       state.backgroundLimit = vault.get('background-limit', state.backgroundLimit);
-      for (const item of vault.get<{url: string; title: string}[]>('session', []).slice(0, 50)) {
-        if (isWebURL(item.url) && !state.tabs.some(tab => tab.url === item.url)) state.tabs.push({ id: randomUUID(), url: item.url, title: item.title, loading: false, canBack: false, canForward: false, requests: 0, blocked: 0, cookiesBlocked: 0 });
+      const savedWorkspaces = restoreWorkspaces(vault.get('workspaces', []));
+      state.workspaces = [...new Map([...state.workspaces, ...savedWorkspaces].map(workspace => [workspace.id, workspace])).values()];
+      for (const tab of restoreSavedTabs(vault.get('session', []), state.workspaces)) {
+        if (!state.tabs.some(existing => existing.id === tab.id)) state.tabs.push(tab);
       }
       state.storage = vault.mode; state.storageMessage = vault.message; state.vaultLocked = vault.locked;
       persist(); break;
@@ -229,6 +250,18 @@ async function dispatch(command: Command): Promise<void> {
       layout(); persist(); break;
     }
     case 'new-tab': newTab(resolveAddress(command.url ?? '')); break;
+    case 'create-workspace': {
+      if (state.workspaces.some(workspace => workspace.name.toLocaleLowerCase() === command.name.toLocaleLowerCase())) throw new Error('A workspace with this name already exists.');
+      const workspace = { id: randomUUID(), name: command.name };
+      state.workspaces.push(workspace); switchWorkspace(workspace.id); break;
+    }
+    case 'rename-workspace': {
+      const workspace = state.workspaces.find(workspace => workspace.id === command.id);
+      if (!workspace) throw new Error('This workspace no longer exists.');
+      if (state.workspaces.some(other => other.id !== command.id && other.name.toLocaleLowerCase() === command.name.toLocaleLowerCase())) throw new Error('A workspace with this name already exists.');
+      workspace.name = command.name; persist(); break;
+    }
+    case 'switch-workspace': switchWorkspace(command.id); break;
     case 'activate-tab': activateTab(command.id); break;
     case 'close-tab': await closeTab(command.id); break;
     case 'back': if (wc?.navigationHistory.canGoBack()) wc.navigationHistory.goBack(); break;
@@ -248,6 +281,8 @@ app.whenReady().then(async () => {
   if (!primaryInstance) return;
   vault = new Vault(join(app.getPath('userData'), 'vault'));
   state = { tabs: [], activeId: '', bookmarks: vault.get<Entry[]>('bookmarks', []), history: vault.get<Entry[]>('history', []), storage: vault.mode, storageMessage: vault.message, vaultLocked: vault.locked, theme: vault.get('theme', 'system'), panel: 'none', backgroundLimit: vault.get('background-limit', 6), workspaces: restoreWorkspaces(vault.get('workspaces', [])), activeWorkspaceId: DEFAULT_WORKSPACE.id };
+  const savedActiveWorkspace = vault.get('active-workspace', state.workspaces[0].id);
+  state.activeWorkspaceId = state.workspaces.some(workspace => workspace.id === savedActiveWorkspace) ? savedActiveWorkspace : state.workspaces[0].id;
   nativeTheme.themeSource = state.theme;
   win = new BrowserWindow({ width: 1280, height: 840, minWidth: 760, minHeight: 520, title: 'Astra', backgroundColor: '#000000', show: false, autoHideMenuBar: true,
     webPreferences: { preload: join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true, spellcheck: false, webviewTag: false, partition: 'astra-chrome' },
@@ -290,12 +325,10 @@ app.whenReady().then(async () => {
       persist(); quitting = true; hibernator.stop(); win.destroy();
     })().catch(() => { closingWindow = false; activateTab(state.activeId); });
   });
-  const saved = vault.get<{ url: string; title: string }[]>('session', []);
+  const saved = restoreSavedTabs(vault.get('session', []), state.workspaces);
   // Saved pages restore on explicit activation; startup makes no website requests.
   newTab();
-  for (const item of saved.filter(item => isWebURL(item.url)).slice(0, 50)) {
-    state.tabs.push({ id: randomUUID(), url: item.url, title: item.title, loading: false, canBack: false, canForward: false, requests: 0, blocked: 0, cookiesBlocked: 0 });
-  }
+  state.tabs.push(...saved);
   persist();
   await win.loadURL(chromeURL);
   win.show();
