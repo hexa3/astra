@@ -1,0 +1,25 @@
+export interface Tab {
+  id: string; url: string; title: string; loading: boolean;
+  canBack: boolean; canForward: boolean; error?: string;
+  requests: number; blocked: number; cookiesBlocked: number;
+}
+export interface Entry { id: string; url: string; title: string; time: number }
+export interface BrowserState {
+  tabs: Tab[]; activeId: string; bookmarks: Entry[]; history: Entry[];
+  storage: 'encrypted' | 'memory'; storageMessage: string;
+  theme: 'system' | 'dark' | 'light'; panel: 'none' | 'bookmarks' | 'history' | 'privacy';
+}
+export type Command =
+  | { type: 'navigate'; url: string }
+  | { type: 'new-tab'; url?: string }
+  | { type: 'activate-tab' | 'close-tab'; id: string }
+  | { type: 'back' | 'forward' | 'reload' | 'stop' | 'bookmark' | 'clear-history' }
+  | { type: 'remove-bookmark'; id: string }
+  | { type: 'theme'; value: BrowserState['theme'] }
+  | { type: 'panel'; value: BrowserState['panel'] };
+export interface AstraAPI {
+  snapshot(): Promise<BrowserState>;
+  command(command: Command): Promise<void>;
+  onState(callback: (state: BrowserState) => void): () => void;
+  onShortcut(callback: (shortcut: string) => void): () => void;
+}
