@@ -35,7 +35,7 @@ export function installPrivacy(ses: Session, getTab: (id: number) => Tab | undef
   ses.setDevicePermissionHandler(() => false);
   ses.setDisplayMediaRequestHandler((_request, callback) => callback({}));
   ses.webRequest.onBeforeRequest((details, callback) => {
-    const tab = getTab(details.webContentsId);
+    const tab = getTab(details.webContentsId ?? -1);
     if (tab) tab.requests++;
     const blocked = isTracker(details.url);
     if (tab && blocked) tab.blocked++;
@@ -43,7 +43,7 @@ export function installPrivacy(ses: Session, getTab: (id: number) => Tab | undef
     changed();
   });
   ses.webRequest.onBeforeSendHeaders((details, callback) => {
-    const tab = getTab(details.webContentsId);
+    const tab = getTab(details.webContentsId ?? -1);
     const headers = { ...details.requestHeaders };
     if (details.resourceType !== 'mainFrame' && isThirdParty(details.url, tab?.url ?? '')) {
       for (const name of Object.keys(headers)) if (name.toLowerCase() === 'cookie') {
@@ -54,7 +54,7 @@ export function installPrivacy(ses: Session, getTab: (id: number) => Tab | undef
     callback({ requestHeaders: headers });
   });
   ses.webRequest.onHeadersReceived((details, callback) => {
-    const tab = getTab(details.webContentsId);
+    const tab = getTab(details.webContentsId ?? -1);
     const headers = { ...details.responseHeaders };
     if (details.resourceType !== 'mainFrame' && isThirdParty(details.url, tab?.url ?? '')) {
       for (const name of Object.keys(headers)) if (name.toLowerCase() === 'set-cookie') {
