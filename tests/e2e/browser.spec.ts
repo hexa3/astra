@@ -413,6 +413,7 @@ test('sidebar collapse keeps native bounds aligned and works from page shortcuts
     await chrome.getByRole('button', { name: 'Bookmarks', exact: true }).click();
     await expect(chrome.getByRole('heading', { name: 'Bookmarks', exact: true })).toBeVisible();
     await chrome.getByRole('button', { name: 'Close library' }).click();
+    expect(await app.evaluate(({ webContents }) => webContents.getAllWebContents().find(contents => contents.getURL().startsWith('http:'))!.isFocused())).toBe(true);
     await chrome.screenshot({ path: 'test-results/sidebar-collapsed.png' });
   } finally { await app.close(); }
 });

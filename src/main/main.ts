@@ -97,7 +97,7 @@ function bindKeys(wc: WebContents): void {
     if ((mod && key === 'r') || key === 'f5') action = () => { void dispatch({ type: 'reload' }); };
     if (mod && key === 'd') action = toggleBookmark;
     if (mod && key === 'h') action = () => { state.panel = 'history'; layout(); publish(); };
-    if (mod && key === 'tab') action = () => {
+    if ((mod || input.control) && key === 'tab') action = () => {
       const tabs = state.tabs.filter(tab => tab.workspaceId === state.activeWorkspaceId);
       const index = tabs.findIndex(tab => tab.id === state.activeId);
       if (tabs.length) activateTab(tabs[(index + (input.shift ? -1 : 1) + tabs.length) % tabs.length].id);
@@ -109,7 +109,7 @@ function bindKeys(wc: WebContents): void {
     if (mod && input.alt && /^[1-9]$/.test(key) && state.workspaces[Number(key) - 1]) action = () => switchWorkspace(state.workspaces[Number(key) - 1].id);
     if (input.alt && !mod && key === 'arrowleft') action = () => { if (contents()?.navigationHistory.canGoBack()) contents()?.navigationHistory.goBack(); };
     if (input.alt && !mod && key === 'arrowright') action = () => { if (contents()?.navigationHistory.canGoForward()) contents()?.navigationHistory.goForward(); };
-    if (key === 'escape' && state.panel !== 'none') action = () => { state.panel = 'none'; layout(); publish(); };
+    if (key === 'escape' && state.panel !== 'none') action = () => { state.panel = 'none'; layout(); publish(); contents()?.focus(); };
     if (action) { event.preventDefault(); action(); }
   });
 }
@@ -269,6 +269,7 @@ async function dispatch(command: Command): Promise<void> {
       if (url) {
         const view = views.get(tab.id) ?? createView(tab);
         void view.webContents.loadURL(url).catch(() => {});
+        view.webContents.focus();
       }
       layout(); persist(); break;
     }
@@ -304,7 +305,7 @@ async function dispatch(command: Command): Promise<void> {
     case 'remove-bookmark': state.bookmarks = state.bookmarks.filter(item => item.id !== command.id); persist(); break;
     case 'clear-history': state.history = []; persist(); break;
     case 'theme': state.theme = command.value; nativeTheme.themeSource = command.value; persist(); break;
-    case 'panel': state.panel = command.value; layout(); break;
+    case 'panel': state.panel = command.value; layout(); if (command.value === 'none') contents()?.focus(); break;
   }
   publish();
 }
