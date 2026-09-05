@@ -12,6 +12,7 @@ export interface BrowserState {
   tabs: Tab[]; activeId: string; bookmarks: Entry[]; history: Entry[];
   storage: 'encrypted' | 'memory'; storageMessage: string; vaultLocked: boolean;
   backgroundLimit: number;
+  sidebarCollapsed?: boolean;
   workspaces: Workspace[]; activeWorkspaceId: string;
   theme: 'system' | 'dark' | 'light'; panel: 'none' | 'bookmarks' | 'history' | 'privacy' | 'storage' | 'workspaces' | 'commands';
 }
@@ -20,7 +21,7 @@ export type Command =
   | { type: 'new-tab'; url?: string }
   | { type: 'activate-tab' | 'close-tab'; id: string }
   | { type: 'move-tab'; id: string; index: number }
-  | { type: 'back' | 'forward' | 'reload' | 'stop' | 'bookmark' | 'clear-history' }
+  | { type: 'back' | 'forward' | 'reload' | 'stop' | 'bookmark' | 'clear-history' | 'toggle-sidebar' }
   | { type: 'remove-bookmark'; id: string }
   | { type: 'unlock-vault'; passphrase: string }
   | { type: 'background-limit'; value: number }

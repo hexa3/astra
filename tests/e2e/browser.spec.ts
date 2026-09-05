@@ -369,6 +369,7 @@ test('tabs reorder by drag and keyboard and keep their encrypted saved order', a
     await expect(chrome.getByRole('tab', { name: 'Second page' })).toBeFocused();
     await chrome.getByRole('tab', { name: 'Second page' }).press('Enter');
     await expect(chrome.getByRole('tab', { name: 'Second page' })).toHaveAttribute('aria-selected', 'true');
+    await chrome.getByRole('button', { name: 'Collapse sidebar' }).click();
     await chrome.getByRole('button', { name: 'Encrypted storage settings' }).click();
     await chrome.getByRole('textbox', { name: 'Vault passphrase', exact: true }).fill('saved tab order test phrase');
     await chrome.getByRole('textbox', { name: 'Repeat vault passphrase' }).fill('saved tab order test phrase');
@@ -382,5 +383,36 @@ test('tabs reorder by drag and keyboard and keep their encrypted saved order', a
     await expect(chrome.getByRole('heading', { name: 'Records secured.' })).toBeVisible();
     const snapshot = await chrome.evaluate(() => window.astra.snapshot());
     expect(snapshot.tabs.filter(tab => tab.url).map(tab => tab.title)).toEqual(['Draft form', 'Second page', 'Astra test page']);
+    expect(snapshot.sidebarCollapsed).toBe(true);
+    await expect(chrome.getByRole('button', { name: 'Expand sidebar' })).toBeVisible();
+  } finally { await app.close(); }
+});
+
+test('sidebar collapse keeps native bounds aligned and works from page shortcuts', async () => {
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, ASTRA_TEST_PROFILE: mkdtempSync(join(tmpdir(), 'astra-sidebar-')) } });
+  try {
+    const chrome = await app.firstWindow();
+    await chrome.getByRole('textbox', { name: 'Address or search' }).fill(origin);
+    await chrome.getByRole('textbox', { name: 'Address or search' }).press('Enter');
+    await expect(chrome.getByRole('tab', { name: 'Astra test page' })).toBeVisible();
+    await chrome.getByRole('button', { name: 'Collapse sidebar' }).click();
+    expect((await chrome.getByRole('complementary', { name: 'Tabs and library' }).boundingBox())!.width).toBe(56);
+    expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].contentView.children.find(view => view.getVisible())!.getBounds().x)).toBe(56);
+    await expect(chrome.getByRole('tab', { name: 'Astra test page' })).toBeVisible();
+    await app.evaluate(({ webContents }) => {
+      const page = webContents.getAllWebContents().find(contents => contents.getURL().startsWith('http:'))!;
+      page.focus(); page.sendInputEvent({type: 'keyDown', keyCode: 'B', modifiers: ['control']});
+      page.sendInputEvent({type: 'keyUp', keyCode: 'B', modifiers: ['control']});
+    });
+    await expect(chrome.getByRole('button', { name: 'Collapse sidebar' })).toBeVisible();
+    expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].contentView.children.find(view => view.getVisible())!.getBounds().x)).toBe(232);
+    await chrome.getByRole('button', { name: 'Open command bar' }).click();
+    const query = chrome.getByRole('combobox', { name: 'Search tabs, history, bookmarks and commands' });
+    await query.fill('Collapse sidebar'); await query.press('Enter');
+    await expect(chrome.getByRole('button', { name: 'Expand sidebar' })).toBeVisible();
+    await chrome.getByRole('button', { name: 'Bookmarks', exact: true }).click();
+    await expect(chrome.getByRole('heading', { name: 'Bookmarks', exact: true })).toBeVisible();
+    await chrome.getByRole('button', { name: 'Close library' }).click();
+    await chrome.screenshot({ path: 'test-results/sidebar-collapsed.png' });
   } finally { await app.close(); }
 });

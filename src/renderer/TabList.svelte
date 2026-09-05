@@ -46,7 +46,8 @@
 <div class="tabs" bind:this={list} role="tablist" aria-label="Open tabs" aria-orientation="vertical" aria-describedby="tab-keyboard-help">
   {#each tabs as item, index (item.id)}
     <div class:active={item.id === activeId} class="tab-row">
-      <button class="tab" class:drop-target={dropId === item.id} role="tab" data-tab-id={item.id} tabindex={item.id === activeId ? 0 : -1} aria-selected={item.id === activeId} title={`${item.url || 'New tab'}${item.suspended ? ' · Sleeping; select to restore' : item.suspensionReason ? ` · Kept awake: ${item.suspensionReason}` : ''}`} onclick={() => run({ type: 'activate-tab', id: item.id })} onkeydown={event => keydown(event, index)} draggable="true" ondragstart={event => dragStart(event, item.id)} ondragover={event => dragOver(event, item.id)} ondrop={event => drop(event, index)} ondragend={() => { draggedId = ''; dropId = ''; }}>
+      <button class="tab" class:drop-target={dropId === item.id} role="tab" aria-label={`${item.title}${item.suspended ? ' (Sleeping)' : ''}`} data-tab-id={item.id} tabindex={item.id === activeId ? 0 : -1} aria-selected={item.id === activeId} title={`${item.title} · ${item.url || 'New tab'}${item.suspended ? ' · Sleeping; select to restore' : item.suspensionReason ? ` · Kept awake: ${item.suspensionReason}` : ''}`} onclick={() => run({ type: 'activate-tab', id: item.id })} onkeydown={event => keydown(event, index)} draggable="true" ondragstart={event => dragStart(event, item.id)} ondragover={event => dragOver(event, item.id)} ondrop={event => drop(event, index)} ondragend={() => { draggedId = ''; dropId = ''; }}>
+        <span class="compact-index" aria-hidden="true">{index + 1}</span>
         <span class:loading={item.loading} class="tab-symbol" aria-hidden="true">{item.url ? '◌' : '+'}</span>
         <span class="tab-title">{item.title}</span>
         {#if item.suspended}<span class="sleep-indicator" aria-label="Sleeping">z</span>{/if}

@@ -12,6 +12,7 @@ import { isWebURL, resolveAddress } from '../shared/navigation';
 import { validateCommand } from '../shared/commands';
 import { DEFAULT_WORKSPACE, restoreWorkspaces, workspacePartition } from '../shared/workspaces';
 import { moveTab } from '../shared/tab-order';
+import { pageBounds } from '../shared/layout';
 import type { BrowserState, Command, Entry, Tab } from '../shared/types';
 
 app.setName('Astra');
@@ -65,6 +66,7 @@ function persist(): void {
   vault.set('history', state.history);
   vault.set('theme', state.theme);
   vault.set('background-limit', state.backgroundLimit);
+  vault.set('sidebar-collapsed', !!state.sidebarCollapsed);
   state.storage = vault.mode; state.storageMessage = vault.message; state.vaultLocked = vault.locked;
 }
 function layout(): void {
@@ -72,7 +74,7 @@ function layout(): void {
   const [width, height] = win.getContentSize();
   for (const [id, view] of views) {
     view.setVisible(id === state.activeId && state.panel === 'none' && !!active()?.url && !active()?.error);
-    view.setBounds({ x: 232, y: 88, width: Math.max(0, width - 232), height: Math.max(0, height - 112) });
+    view.setBounds(pageBounds(width, height, state.sidebarCollapsed));
   }
 }
 function shortcut(name: string): void {
@@ -85,6 +87,7 @@ function bindKeys(wc: WebContents): void {
     const key = input.key.toLowerCase();
     let action: (() => void) | undefined;
     if (mod && key === 'l') action = () => shortcut('address');
+    if (mod && key === 'b') action = () => { void dispatch({ type: 'toggle-sidebar' }); };
     if (mod && key === 'k') action = () => {
       state.panel = state.panel === 'commands' ? 'none' : 'commands';
       layout(); publish(); win.webContents.focus();
@@ -249,6 +252,7 @@ async function dispatch(command: Command): Promise<void> {
       state.bookmarks = merge(vault.get<Entry[]>('bookmarks', []), state.bookmarks);
       state.history = merge(vault.get<Entry[]>('history', []), state.history).slice(0, 2000);
       state.backgroundLimit = vault.get('background-limit', state.backgroundLimit);
+      state.sidebarCollapsed = vault.get('sidebar-collapsed', state.sidebarCollapsed ?? false);
       const savedWorkspaces = restoreWorkspaces(vault.get('workspaces', []));
       state.workspaces = [...new Map([...state.workspaces, ...savedWorkspaces].map(workspace => [workspace.id, workspace])).values()];
       for (const tab of restoreSavedTabs(vault.get('session', []), state.workspaces)) {
@@ -295,6 +299,7 @@ async function dispatch(command: Command): Promise<void> {
     }
     case 'stop': wc?.stop(); break;
     case 'background-limit': state.backgroundLimit = command.value; persist(); hibernator.schedule(); break;
+    case 'toggle-sidebar': state.sidebarCollapsed = !state.sidebarCollapsed; layout(); persist(); break;
     case 'bookmark': toggleBookmark(); break;
     case 'remove-bookmark': state.bookmarks = state.bookmarks.filter(item => item.id !== command.id); persist(); break;
     case 'clear-history': state.history = []; persist(); break;
@@ -308,6 +313,7 @@ app.whenReady().then(async () => {
   vault = new Vault(join(app.getPath('userData'), 'vault'));
   state = { tabs: [], activeId: '', bookmarks: vault.get<Entry[]>('bookmarks', []), history: vault.get<Entry[]>('history', []), storage: vault.mode, storageMessage: vault.message, vaultLocked: vault.locked, theme: vault.get('theme', 'system'), panel: 'none', backgroundLimit: vault.get('background-limit', 6), workspaces: restoreWorkspaces(vault.get('workspaces', [])), activeWorkspaceId: DEFAULT_WORKSPACE.id };
   const savedActiveWorkspace = vault.get('active-workspace', state.workspaces[0].id);
+  state.sidebarCollapsed = vault.get('sidebar-collapsed', false);
   state.activeWorkspaceId = state.workspaces.some(workspace => workspace.id === savedActiveWorkspace) ? savedActiveWorkspace : state.workspaces[0].id;
   nativeTheme.themeSource = state.theme;
   win = new BrowserWindow({ width: 1280, height: 840, minWidth: 760, minHeight: 520, title: 'Astra', backgroundColor: '#000000', show: false, autoHideMenuBar: true,

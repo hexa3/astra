@@ -35,6 +35,7 @@ export function searchBrowser(state: BrowserState, query: string, limit = 30): S
     ...state.bookmarks.map(entry => ({ id: `bookmark:${entry.id}`, label: entry.title, detail: entry.url, kind: 'bookmark' as const, command: { type: 'navigate' as const, url: entry.url } })),
     ...state.history.map(entry => ({ id: `history:${entry.id}`, label: entry.title, detail: entry.url, kind: 'history' as const, command: { type: 'navigate' as const, url: entry.url } })),
     { id: 'new-tab', label: 'New tab', detail: 'Ctrl/Cmd+T', kind: 'command', command: { type: 'new-tab' } },
+    { id: 'sidebar', label: state.sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar', detail: 'Ctrl/Cmd+B', keywords: 'toggle sidebar', kind: 'command', command: { type: 'toggle-sidebar' } },
     { id: 'workspaces', label: 'Create or manage workspaces', detail: 'Separate tabs and site logins', keywords: 'new space spaces workspace', kind: 'command', command: { type: 'panel', value: 'workspaces' } },
     { id: 'history', label: 'Browsing history', detail: 'Your local record of visited pages', kind: 'command', command: { type: 'panel', value: 'history' } },
     { id: 'bookmarks', label: 'Bookmarks', detail: 'Your saved pages', kind: 'command', command: { type: 'panel', value: 'bookmarks' } },

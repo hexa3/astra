@@ -307,7 +307,7 @@ p {
 .shell {
   height: 100vh;
   display: grid;
-  grid-template-columns: 232px 1fr;
+  grid-template-columns: var(--sidebar-width, 232px) 1fr;
   grid-template-rows: 36px 52px 1fr 24px;
   overflow: hidden;
 }
@@ -472,6 +472,47 @@ p {
 .sidebar-bottom {
   margin-top: auto;
   padding-top: 30px;
+}
+.compact-index {
+  display: none;
+}
+.sidebar.collapsed {
+  padding: 16px 6px 0;
+}
+.collapsed .section-label,
+.collapsed .workspace-switch select,
+.collapsed .tab-title,
+.collapsed .tab-symbol,
+.collapsed .sleep-indicator,
+.collapsed .close-tab,
+.collapsed .new-tab span,
+.collapsed .library-button span,
+.collapsed .sidebar-foot > span {
+  display: none;
+}
+.collapsed .compact-index {
+  display: inline;
+}
+.collapsed .workspace-switch {
+  justify-content: center;
+  margin-bottom: 12px;
+}
+.collapsed .tab {
+  justify-content: center;
+  padding: 0;
+  font: 12px monospace;
+}
+.collapsed .new-tab,
+.collapsed .library-button {
+  justify-content: center;
+  padding: 8px;
+}
+.collapsed .sidebar-foot {
+  justify-content: center;
+  padding: 8px 0;
+}
+.collapsed .sidebar-bottom {
+  padding-top: 12px;
 }
 .library-button {
   width: 100%;

@@ -6,7 +6,7 @@ export function validateCommand(raw: unknown): Command {
   if (!raw || typeof raw !== 'object') throw new Error('Invalid command.');
   const command = raw as Record<string, unknown>;
   if (typeof command.type !== 'string') throw new Error('Invalid command.');
-  const simple = ['back', 'forward', 'reload', 'stop', 'bookmark', 'clear-history'];
+  const simple = ['back', 'forward', 'reload', 'stop', 'bookmark', 'clear-history', 'toggle-sidebar'];
   if (simple.includes(command.type)) return raw as Command;
   if (command.type === 'navigate' && typeof command.url === 'string' && command.url.length <= 8192) return raw as Command;
   if (command.type === 'new-tab' && (command.url === undefined || typeof command.url === 'string' && command.url.length <= 8192)) return raw as Command;

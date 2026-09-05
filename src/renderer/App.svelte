@@ -6,6 +6,7 @@
   import WorkspacePanel from './WorkspacePanel.svelte';
   import CommandPalette from './CommandPalette.svelte';
   import TabList from './TabList.svelte';
+  import { sidebarWidth } from '../shared/layout';
   let state: BrowserState | undefined;
   let address = '';
   let search = '';
@@ -49,7 +50,7 @@
 
 <svelte:head><title>Astra{tab?.url ? ` — ${tab.title}` : ''}</title></svelte:head>
 
-<div class="shell">
+<div class="shell" style={`--sidebar-width:${sidebarWidth(state?.sidebarCollapsed)}px`}>
   <header class="masthead">
     <div class="wordmark">ASTRA<span class="brand-dot" aria-hidden="true"></span></div>
     {#if error}
@@ -61,6 +62,7 @@
   </header>
   <nav class="toolbar" aria-label="Navigation">
     <div class="navigation-buttons">
+      <button aria-label={state?.sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'} aria-expanded={!state?.sidebarCollapsed} aria-controls="browser-sidebar" title="Toggle sidebar · Ctrl/Cmd+B" onclick={() => run({ type: 'toggle-sidebar' })}><Icon name="sidebar" /></button>
       <button aria-label="Back" title="Back · Alt+Left" disabled={!tab?.canBack} onclick={() => run({ type: 'back' })}><Icon name="back" /></button>
       <button aria-label="Forward" title="Forward · Alt+Right" disabled={!tab?.canForward} onclick={() => run({ type: 'forward' })}><Icon name="forward" /></button>
       <button aria-label={tab?.loading ? 'Stop loading' : 'Reload'} title="Reload · Ctrl+R" disabled={!tab?.url} onclick={() => run({ type: tab?.loading ? 'stop' : 'reload' })}><Icon name={tab?.loading ? 'close' : 'reload'} /></button>
@@ -74,17 +76,17 @@
     <button aria-label="Open command bar" title="Command bar · Ctrl/Cmd+K" onclick={() => run({ type: 'panel', value: 'commands' })}><Icon name="search" /><span class="key-hint">K</span></button>
   </nav>
 
-  <aside class="sidebar" aria-label="Tabs and library">
+  <aside class="sidebar" class:collapsed={state?.sidebarCollapsed} id="browser-sidebar" aria-label="Tabs and library">
     <label class="section-label" for="workspace-switch">WORKSPACE</label>
-    <div class="workspace-switch"><select id="workspace-switch" aria-label="Workspace" value={state?.activeWorkspaceId} onchange={event => run({ type: 'switch-workspace', id: event.currentTarget.value })}>{#each state?.workspaces ?? [] as workspace (workspace.id)}<option value={workspace.id}>{workspace.name}</option>{/each}</select><button aria-label="Manage workspaces" title="Create or rename a workspace" onclick={() => run({ type: 'panel', value: 'workspaces' })}><Icon name="plus" /></button></div>
+    <div class="workspace-switch"><select id="workspace-switch" aria-label="Workspace" value={state?.activeWorkspaceId} onchange={event => run({ type: 'switch-workspace', id: event.currentTarget.value })}>{#each state?.workspaces ?? [] as workspace (workspace.id)}<option value={workspace.id}>{workspace.name}</option>{/each}</select><button aria-label="Manage workspaces" title="Create or rename a workspace" onclick={() => run({ type: 'panel', value: 'workspaces' })}><Icon name={state?.sidebarCollapsed ? 'globe' : 'plus'} /></button></div>
     <div class="section-label"><span>YOUR TABS</span><span>{String(workspaceTabs.length).padStart(2, '0')}</span></div>
     <TabList tabs={workspaceTabs} activeId={state?.activeId ?? ''} {run} />
     <button class="new-tab" aria-label="New tab" onclick={async () => { await run({ type: 'new-tab' }); focusAddress(); }}><Icon name="plus" /><span>New tab</span><span class="key-hint">Ctrl T</span></button>
     <div class="sidebar-bottom">
       <div class="section-label">LIBRARY</div>
-      <button class="library-button" class:selected={state?.panel === 'bookmarks'} onclick={() => { search = ''; run({ type: 'panel', value: state?.panel === 'bookmarks' ? 'none' : 'bookmarks' }); }}><Icon name="bookmark" />Bookmarks</button>
-      <button class="library-button" class:selected={state?.panel === 'history'} onclick={() => { search = ''; run({ type: 'panel', value: state?.panel === 'history' ? 'none' : 'history' }); }}><Icon name="history" />History</button>
-      <button class="library-button" class:selected={state?.panel === 'privacy'} onclick={() => run({ type: 'panel', value: state?.panel === 'privacy' ? 'none' : 'privacy' })}><Icon name="shield" />Behind the page</button>
+      <button class="library-button" aria-label="Bookmarks" title="Bookmarks" class:selected={state?.panel === 'bookmarks'} onclick={() => { search = ''; run({ type: 'panel', value: state?.panel === 'bookmarks' ? 'none' : 'bookmarks' }); }}><Icon name="bookmark" /><span>Bookmarks</span></button>
+      <button class="library-button" aria-label="History" title="History" class:selected={state?.panel === 'history'} onclick={() => { search = ''; run({ type: 'panel', value: state?.panel === 'history' ? 'none' : 'history' }); }}><Icon name="history" /><span>History</span></button>
+      <button class="library-button" aria-label="Behind the page" title="Behind the page" class:selected={state?.panel === 'privacy'} onclick={() => run({ type: 'panel', value: state?.panel === 'privacy' ? 'none' : 'privacy' })}><Icon name="shield" /><span>Behind the page</span></button>
       <div class="sidebar-foot"><span>QUIET BY DESIGN</span><button aria-label="Change color theme" title={`Theme: ${state?.theme ?? 'system'}`} onclick={() => run({ type: 'theme', value: state?.theme === 'system' ? 'dark' : state?.theme === 'dark' ? 'light' : 'system' })}><Icon name="sun" /></button></div>
     </div>
   </aside>
