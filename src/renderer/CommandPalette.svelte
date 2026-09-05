@@ -9,6 +9,7 @@
   let selected = 0;
   let dialog: HTMLDialogElement;
   let input: HTMLInputElement;
+  let closeButton: HTMLButtonElement;
   let choosing = false;
   $: results = searchBrowser(state, query);
   $: selected = Math.min(selected, Math.max(0, results.length - 1));
@@ -25,14 +26,19 @@
       await tick(); document.getElementById(`command-result-${selected}`)?.scrollIntoView({ block: 'nearest' });
     }
   }
+  function trapFocus(event: KeyboardEvent) {
+    if (event.key !== 'Tab') return;
+    event.preventDefault();
+    (document.activeElement === input ? closeButton : input).focus();
+  }
   onMount(() => { dialog.showModal(); input.focus(); });
 </script>
 
-<dialog class="command-palette" bind:this={dialog} aria-label="Command bar" oncancel={event => { event.preventDefault(); run({ type: 'panel', value: 'none' }); }}>
+<dialog class="command-palette" bind:this={dialog} aria-label="Command bar" onkeydown={trapFocus} oncancel={event => { event.preventDefault(); run({ type: 'panel', value: 'none' }); }}>
   <div class="command-input-row">
     <Icon name="search" />
     <input bind:this={input} bind:value={query} oninput={() => selected = 0} onkeydown={keydown} role="combobox" aria-label="Search tabs, history, bookmarks and commands" aria-expanded="true" aria-autocomplete="list" aria-controls="command-results" aria-activedescendant={results.length ? `command-result-${selected}` : undefined} placeholder="Where would you like to go?" autocomplete="off" spellcheck="false" maxlength="200" />
-    <button aria-label="Close command bar" onclick={() => run({ type: 'panel', value: 'none' })}><Icon name="close" /></button>
+    <button bind:this={closeButton} aria-label="Close command bar" onclick={() => run({ type: 'panel', value: 'none' })}><Icon name="close" /></button>
   </div>
   <div id="command-results" class="command-results" role="listbox" aria-label="Search results">
     {#each results as result, index (result.id)}

@@ -239,3 +239,55 @@ test('encrypted restart restores named workspaces and their lazy tabs', async ()
     await expect.poll(async () => app.evaluate(({ webContents }, url) => webContents.getAllWebContents().some(contents => contents.getURL() === url), `${origin}/second`)).toBe(true);
   } finally { await app.close(); }
 });
+
+test('command bar jumps across workspaces and executes real browser actions', async () => {
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, ASTRA_TEST_PROFILE: mkdtempSync(join(tmpdir(), 'astra-command-test-')) } });
+  try {
+    const chrome = await app.firstWindow();
+    await chrome.getByRole('textbox', { name: 'Address or search' }).fill(origin);
+    await chrome.getByRole('textbox', { name: 'Address or search' }).press('Enter');
+    await expect(chrome.getByRole('tab', { name: 'Astra test page' })).toBeVisible();
+    await chrome.getByRole('button', { name: 'Bookmark page', exact: true }).click();
+    await chrome.getByRole('button', { name: 'Manage workspaces' }).click();
+    await chrome.getByLabel('New workspace name').fill('Work');
+    await chrome.getByRole('button', { name: 'Create workspace', exact: true }).click();
+    await app.evaluate(({ BrowserWindow }) => {
+      const contents = BrowserWindow.getAllWindows()[0].webContents;
+      contents.focus(); contents.sendInputEvent({type: 'keyDown', keyCode: 'K', modifiers: ['control']});
+      contents.sendInputEvent({type: 'keyUp', keyCode: 'K', modifiers: ['control']});
+    });
+    const query = chrome.getByRole('combobox', { name: 'Search tabs, history, bookmarks and commands' });
+    await expect(chrome.getByRole('dialog', { name: 'Command bar' })).toBeVisible();
+    await expect(query).toBeFocused();
+    await query.press('Tab');
+    await expect(chrome.getByRole('button', {name: 'Close command bar'})).toBeFocused();
+    await chrome.getByRole('button', {name: 'Close command bar'}).press('Tab');
+    await expect(query).toBeFocused();
+    await query.press('Shift+Tab');
+    await expect(chrome.getByRole('button', {name: 'Close command bar'})).toBeFocused();
+    await chrome.getByRole('button', {name: 'Close command bar'}).press('Shift+Tab');
+    await expect(query).toBeFocused();
+    await query.fill('Astra test page');
+    await expect(chrome.getByRole('option', {name: /tab Astra test page/})).toHaveCount(1);
+    await query.press('Enter');
+    await expect(chrome.getByRole('combobox', { name: 'Workspace', exact: true })).toHaveValue('personal');
+    await expect(chrome.getByRole('tab', { name: 'Astra test page' })).toBeVisible();
+    await chrome.getByRole('button', {name: 'Open command bar'}).click();
+    await query.fill('Dark theme'); await query.press('Enter');
+    await expect(chrome.locator('html')).toHaveAttribute('data-theme', 'dark');
+    await chrome.getByRole('button', {name: 'Open command bar'}).click();
+    await query.fill('Bookmarks'); await query.press('Enter');
+    await expect(chrome.getByRole('heading', {name: 'Bookmarks', exact: true})).toBeVisible();
+    await chrome.getByRole('button', {name: 'Open command bar'}).click();
+    await query.fill(`${origin}/from-command`); await query.press('Enter');
+    await expect.poll(async () => {
+      const snapshot = await chrome.evaluate(() => window.astra.snapshot());
+      return snapshot.tabs.find(tab => tab.id === snapshot.activeId)?.url;
+    }).toBe(`${origin}/from-command`);
+    await chrome.getByRole('button', {name: 'Open command bar'}).click();
+    await query.fill('javascript:alert(1)');
+    await expect(chrome.getByText('No matching local results.')).toBeVisible();
+    await query.press('Escape');
+    await expect(chrome.getByRole('dialog', {name: 'Command bar'})).toHaveCount(0);
+  } finally { await app.close(); }
+});
