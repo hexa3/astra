@@ -9,7 +9,7 @@ import { Hibernator } from './hibernation';
 import { requestPageClose } from './lifecycle';
 import { isWebURL, resolveAddress } from '../shared/navigation';
 import { validateCommand } from '../shared/commands';
-import { DEFAULT_WORKSPACE, restoreWorkspaces } from '../shared/workspaces';
+import { DEFAULT_WORKSPACE, restoreWorkspaces, workspacePartition } from '../shared/workspaces';
 import type { BrowserState, Command, Entry, Tab } from '../shared/types';
 
 app.setName('Astra');
@@ -33,9 +33,20 @@ const closingTabs = new Set<string>();
 const pendingURLs: string[] = [];
 let publishTimer: ReturnType<typeof setTimeout> | undefined;
 const views = new Map<string, WebContentsView>();
+const preparedSessions = new Set<string>();
 const chromeURL = pathToFileURL(join(__dirname, '../renderer/index.html')).href;
 const active = () => state.tabs.find(tab => tab.id === state.activeId);
 const contents = () => views.get(state.activeId)?.webContents;
+
+function pageSession(workspaceId: string): Electron.Session {
+  const partition = workspacePartition(workspaceId);
+  const context = session.fromPartition(partition, { cache: false });
+  if (!preparedSessions.has(partition)) {
+    installPrivacy(context, id => state.tabs.find(tab => views.get(tab.id)?.webContents?.id === id), schedulePublish);
+    preparedSessions.add(partition);
+  }
+  return context;
+}
 
 function publish(): void {
   if (!win || win.isDestroyed()) return;
@@ -87,7 +98,7 @@ function bindKeys(wc: WebContents): void {
 }
 function createView(tab: Tab): WebContentsView {
   const view = new WebContentsView({ webPreferences: {
-    session: session.fromPartition('astra-pages', { cache: false }),
+    session: pageSession(tab.workspaceId ?? DEFAULT_WORKSPACE.id),
     nodeIntegration: false, contextIsolation: true, sandbox: true,
     webSecurity: true, allowRunningInsecureContent: false, spellcheck: false,
     navigateOnDragDrop: false, safeDialogs: true, webviewTag: false,
@@ -259,7 +270,7 @@ app.whenReady().then(async () => {
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   win.webContents.on('will-navigate', event => event.preventDefault());
   bindKeys(win.webContents);
-  installPrivacy(session.fromPartition('astra-pages', { cache: false }), id => state.tabs.find(tab => views.get(tab.id)?.webContents?.id === id), schedulePublish);
+  pageSession(DEFAULT_WORKSPACE.id);
   ipcMain.handle('astra:snapshot', event => { authorize(event); return state; });
   ipcMain.handle('astra:command', async (event, command) => { authorize(event); await dispatch(validateCommand(command)); });
   win.on('resize', layout);
