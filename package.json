@@ -1,7 +1,7 @@
 {
   "name": "astra-browser",
   "productName": "Astra",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "A quiet, open browser. Local by default. Yours by design.",

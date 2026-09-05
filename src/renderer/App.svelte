@@ -57,7 +57,7 @@
       <div class="chrome-error" role="alert"><span title={error}>{error}</span><button aria-label="Dismiss error" onclick={() => error = ''}><Icon name="close" /></button></div>
     {:else}
       <span class="masthead-note">A little less noise. A little more internet.</span>
-      <span class="version">BUILD 001</span>
+      <span class="version">v{__ASTRA_VERSION__}</span>
     {/if}
   </header>
   <nav class="toolbar" aria-label="Navigation">
