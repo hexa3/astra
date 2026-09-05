@@ -11,6 +11,7 @@ export function validateCommand(raw: unknown): Command {
   if (command.type === 'navigate' && typeof command.url === 'string' && command.url.length <= 8192) return raw as Command;
   if (command.type === 'new-tab' && (command.url === undefined || typeof command.url === 'string' && command.url.length <= 8192)) return raw as Command;
   if (['activate-tab', 'close-tab', 'remove-bookmark', 'switch-workspace'].includes(command.type) && typeof command.id === 'string' && command.id.length <= 100) return raw as Command;
+  if (command.type === 'move-tab' && typeof command.id === 'string' && command.id.length <= 100 && Number.isInteger(command.index) && Number(command.index) >= 0 && Number(command.index) <= 100000) return raw as Command;
   if (command.type === 'create-workspace' && typeof command.name === 'string') return { type: command.type, name: workspaceName(command.name) };
   if (command.type === 'rename-workspace' && typeof command.id === 'string' && command.id.length <= 100 && typeof command.name === 'string') return { type: command.type, id: command.id, name: workspaceName(command.name) };
   if (command.type === 'theme' && typeof command.value === 'string' && ['system', 'dark', 'light'].includes(command.value)) return raw as Command;

@@ -19,6 +19,7 @@ export type Command =
   | { type: 'navigate'; url: string }
   | { type: 'new-tab'; url?: string }
   | { type: 'activate-tab' | 'close-tab'; id: string }
+  | { type: 'move-tab'; id: string; index: number }
   | { type: 'back' | 'forward' | 'reload' | 'stop' | 'bookmark' | 'clear-history' }
   | { type: 'remove-bookmark'; id: string }
   | { type: 'unlock-vault'; passphrase: string }

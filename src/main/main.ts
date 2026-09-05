@@ -11,6 +11,7 @@ import { createTab, restoreSavedTabs } from './session-state';
 import { isWebURL, resolveAddress } from '../shared/navigation';
 import { validateCommand } from '../shared/commands';
 import { DEFAULT_WORKSPACE, restoreWorkspaces, workspacePartition } from '../shared/workspaces';
+import { moveTab } from '../shared/tab-order';
 import type { BrowserState, Command, Entry, Tab } from '../shared/types';
 
 app.setName('Astra');
@@ -281,6 +282,7 @@ async function dispatch(command: Command): Promise<void> {
     }
     case 'switch-workspace': switchWorkspace(command.id); break;
     case 'activate-tab': activateTab(command.id); break;
+    case 'move-tab': state.tabs = moveTab(state.tabs, command.id, command.index); persist(); break;
     case 'close-tab': await closeTab(command.id); break;
     case 'back': if (wc?.navigationHistory.canGoBack()) wc.navigationHistory.goBack(); break;
     case 'forward': if (wc?.navigationHistory.canGoForward()) wc.navigationHistory.goForward(); break;
