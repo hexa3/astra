@@ -347,3 +347,40 @@ test('address identifies the committed page after stopped and no-content navigat
     await expect(alert).toHaveCount(0);
   } finally { await app.close(); }
 });
+
+test('tabs reorder by drag and keyboard and keep their encrypted saved order', async () => {
+  const profile = mkdtempSync(join(tmpdir(), 'astra-tab-order-'));
+  const launch = () => electron.launch({ args: ['.', '--password-store=basic'], env: { ...process.env, ASTRA_TEST_PROFILE: profile } });
+  let app = await launch();
+  try {
+    let chrome = await app.firstWindow();
+    for (const [index, path] of ['', '/second', '/form'].entries()) {
+      if (index) await chrome.getByRole('button', { name: 'New tab', exact: true }).click();
+      await chrome.getByRole('textbox', { name: 'Address or search' }).fill(`${origin}${path}`);
+      await chrome.getByRole('textbox', { name: 'Address or search' }).press('Enter');
+      await expect(chrome.getByRole('tab').nth(index)).toContainText(['Astra test page', 'Second page', 'Draft form'][index]);
+    }
+    await chrome.getByRole('tab', { name: 'Astra test page' }).dragTo(chrome.getByRole('tab', { name: 'Draft form' }));
+    await expect(chrome.getByRole('tab')).toHaveText([/Second page/, /Draft form/, /Astra test page/]);
+    await chrome.getByRole('tab', { name: 'Draft form' }).press('Alt+Shift+ArrowUp');
+    await expect(chrome.getByRole('tab')).toHaveText([/Draft form/, /Second page/, /Astra test page/]);
+    await expect(chrome.getByRole('tab', { name: 'Draft form' })).toBeFocused();
+    await chrome.getByRole('tab', { name: 'Draft form' }).press('ArrowDown');
+    await expect(chrome.getByRole('tab', { name: 'Second page' })).toBeFocused();
+    await chrome.getByRole('tab', { name: 'Second page' }).press('Enter');
+    await expect(chrome.getByRole('tab', { name: 'Second page' })).toHaveAttribute('aria-selected', 'true');
+    await chrome.getByRole('button', { name: 'Encrypted storage settings' }).click();
+    await chrome.getByRole('textbox', { name: 'Vault passphrase', exact: true }).fill('saved tab order test phrase');
+    await chrome.getByRole('textbox', { name: 'Repeat vault passphrase' }).fill('saved tab order test phrase');
+    await chrome.getByRole('button', { name: 'Create encrypted vault' }).click();
+    await expect(chrome.getByRole('heading', { name: 'Records secured.' })).toBeVisible();
+    await app.close();
+    app = await launch(); chrome = await app.firstWindow();
+    await chrome.getByRole('button', { name: 'Encrypted storage settings' }).click();
+    await chrome.getByRole('textbox', { name: 'Vault passphrase', exact: true }).fill('saved tab order test phrase');
+    await chrome.getByRole('button', { name: 'Unlock records' }).click();
+    await expect(chrome.getByRole('heading', { name: 'Records secured.' })).toBeVisible();
+    const snapshot = await chrome.evaluate(() => window.astra.snapshot());
+    expect(snapshot.tabs.filter(tab => tab.url).map(tab => tab.title)).toEqual(['Draft form', 'Second page', 'Astra test page']);
+  } finally { await app.close(); }
+});

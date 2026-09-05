@@ -5,6 +5,7 @@
   import PrivacyPanel from './PrivacyPanel.svelte';
   import WorkspacePanel from './WorkspacePanel.svelte';
   import CommandPalette from './CommandPalette.svelte';
+  import TabList from './TabList.svelte';
   let state: BrowserState | undefined;
   let address = '';
   let search = '';
@@ -77,19 +78,8 @@
     <label class="section-label" for="workspace-switch">WORKSPACE</label>
     <div class="workspace-switch"><select id="workspace-switch" aria-label="Workspace" value={state?.activeWorkspaceId} onchange={event => run({ type: 'switch-workspace', id: event.currentTarget.value })}>{#each state?.workspaces ?? [] as workspace (workspace.id)}<option value={workspace.id}>{workspace.name}</option>{/each}</select><button aria-label="Manage workspaces" title="Create or rename a workspace" onclick={() => run({ type: 'panel', value: 'workspaces' })}><Icon name="plus" /></button></div>
     <div class="section-label"><span>YOUR TABS</span><span>{String(workspaceTabs.length).padStart(2, '0')}</span></div>
-    <div class="tabs" role="tablist" aria-label="Open tabs" aria-orientation="vertical">
-      {#each workspaceTabs as item (item.id)}
-        <div class:active={item.id === state?.activeId} class="tab-row">
-          <button class="tab" role="tab" aria-selected={item.id === state?.activeId} title={`${item.url || 'New tab'}${item.suspended ? ' · Sleeping; select to restore' : item.suspensionReason ? ` · Kept awake: ${item.suspensionReason}` : ''}`} onclick={() => run({ type: 'activate-tab', id: item.id })}>
-            <span class:loading={item.loading} class="tab-symbol" aria-hidden="true">{item.url ? '◌' : '+'}</span>
-            <span class="tab-title">{item.title}</span>
-            {#if item.suspended}<span class="sleep-indicator" aria-label="Sleeping">z</span>{/if}
-          </button>
-          <button class="close-tab" aria-label={`Close ${item.title}`} onclick={() => run({ type: 'close-tab', id: item.id })}><Icon name="close" /></button>
-        </div>
-      {/each}
-    </div>
-    <button class="new-tab" onclick={async () => { await run({ type: 'new-tab' }); focusAddress(); }}><Icon name="plus" /><span>New tab</span><span class="key-hint">Ctrl T</span></button>
+    <TabList tabs={workspaceTabs} activeId={state?.activeId ?? ''} {run} />
+    <button class="new-tab" aria-label="New tab" onclick={async () => { await run({ type: 'new-tab' }); focusAddress(); }}><Icon name="plus" /><span>New tab</span><span class="key-hint">Ctrl T</span></button>
     <div class="sidebar-bottom">
       <div class="section-label">LIBRARY</div>
       <button class="library-button" class:selected={state?.panel === 'bookmarks'} onclick={() => { search = ''; run({ type: 'panel', value: state?.panel === 'bookmarks' ? 'none' : 'bookmarks' }); }}><Icon name="bookmark" />Bookmarks</button>
