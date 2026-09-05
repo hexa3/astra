@@ -4,6 +4,7 @@
   import Icon from './Icon.svelte';
   import PrivacyPanel from './PrivacyPanel.svelte';
   import WorkspacePanel from './WorkspacePanel.svelte';
+  import CommandPalette from './CommandPalette.svelte';
   let state: BrowserState | undefined;
   let address = '';
   let search = '';
@@ -66,6 +67,7 @@
       <span class="key-hint">Ctrl L</span>
     </form>
     <button aria-label={bookmarked ? 'Remove bookmark' : 'Bookmark page'} aria-pressed={bookmarked} title="Bookmark · Ctrl+D" disabled={!tab?.url} onclick={() => run({ type: 'bookmark' })}><Icon name="bookmark" /></button>
+    <button aria-label="Open command bar" title="Command bar · Ctrl/Cmd+K" onclick={() => run({ type: 'panel', value: 'commands' })}><Icon name="search" /><span class="key-hint">K</span></button>
   </nav>
 
   <aside class="sidebar" aria-label="Tabs and library">
@@ -96,7 +98,9 @@
 
   <main class="canvas" id="main-content">
     {#if error}<div class="error" role="alert">{error}<button aria-label="Dismiss error" onclick={() => error = ''}><Icon name="close" /></button></div>{/if}
-    {#if state?.panel === 'workspaces'}
+    {#if state?.panel === 'commands'}
+      <CommandPalette {state} {run} />
+    {:else if state?.panel === 'workspaces'}
       <WorkspacePanel {state} {run} />
     {:else if state?.panel === 'storage'}
       <section class="panel">

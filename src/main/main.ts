@@ -84,6 +84,10 @@ function bindKeys(wc: WebContents): void {
     const key = input.key.toLowerCase();
     let action: (() => void) | undefined;
     if (mod && key === 'l') action = () => shortcut('address');
+    if (mod && key === 'k') action = () => {
+      state.panel = state.panel === 'commands' ? 'none' : 'commands';
+      layout(); publish(); win.webContents.focus();
+    };
     if (mod && key === 't') action = () => { newTab(); shortcut('address'); };
     if (mod && key === 'w') action = () => closeTab(state.activeId);
     if ((mod && key === 'r') || key === 'f5') action = () => contents()?.reload();
@@ -255,7 +259,7 @@ async function dispatch(command: Command): Promise<void> {
       }
       layout(); persist(); break;
     }
-    case 'new-tab': newTab(resolveAddress(command.url ?? '')); break;
+    case 'new-tab': newTab(resolveAddress(command.url ?? '')); if (!command.url) shortcut('address'); break;
     case 'create-workspace': {
       if (state.workspaces.some(workspace => workspace.name.toLocaleLowerCase() === command.name.toLocaleLowerCase())) throw new Error('A workspace with this name already exists.');
       const workspace = { id: randomUUID(), name: command.name };

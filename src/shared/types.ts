@@ -13,7 +13,7 @@ export interface BrowserState {
   storage: 'encrypted' | 'memory'; storageMessage: string; vaultLocked: boolean;
   backgroundLimit: number;
   workspaces: Workspace[]; activeWorkspaceId: string;
-  theme: 'system' | 'dark' | 'light'; panel: 'none' | 'bookmarks' | 'history' | 'privacy' | 'storage' | 'workspaces';
+  theme: 'system' | 'dark' | 'light'; panel: 'none' | 'bookmarks' | 'history' | 'privacy' | 'storage' | 'workspaces' | 'commands';
 }
 export type Command =
   | { type: 'navigate'; url: string }
