@@ -332,5 +332,13 @@ test('address identifies the committed page after stopped and no-content navigat
     await chrome.getByRole('button', { name: 'Try again' }).click();
     await expect(chrome.getByRole('tab', { name: 'Recovered page' })).toBeVisible();
     await expect(address).toHaveValue(`${origin}/retry`);
+    await address.fill('javascript:alert(1)'); await address.press('Enter');
+    const alert = chrome.getByRole('alert');
+    await expect(alert).toBeVisible();
+    const bounds = await alert.boundingBox();
+    expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(88);
+    await expect(address).toHaveValue(`${origin}/retry`);
+    await chrome.getByRole('button', { name: 'Dismiss error' }).click();
+    await expect(alert).toHaveCount(0);
   } finally { await app.close(); }
 });

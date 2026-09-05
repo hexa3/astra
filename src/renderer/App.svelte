@@ -51,8 +51,12 @@
 <div class="shell">
   <header class="masthead">
     <div class="wordmark">ASTRA<span class="brand-dot" aria-hidden="true"></span></div>
-    <span class="masthead-note">A little less noise. A little more internet.</span>
-    <span class="version">BUILD 001</span>
+    {#if error}
+      <div class="chrome-error" role="alert"><span title={error}>{error}</span><button aria-label="Dismiss error" onclick={() => error = ''}><Icon name="close" /></button></div>
+    {:else}
+      <span class="masthead-note">A little less noise. A little more internet.</span>
+      <span class="version">BUILD 001</span>
+    {/if}
   </header>
   <nav class="toolbar" aria-label="Navigation">
     <div class="navigation-buttons">
@@ -96,7 +100,6 @@
   </aside>
 
   <main class="canvas" id="main-content">
-    {#if error}<div class="error" role="alert">{error}<button aria-label="Dismiss error" onclick={() => error = ''}><Icon name="close" /></button></div>{/if}
     {#if state?.panel === 'commands'}
       <CommandPalette {state} {run} />
     {:else if state?.panel === 'workspaces'}
