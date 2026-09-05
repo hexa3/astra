@@ -1,0 +1,49 @@
+{
+  "name": "astra-browser",
+  "productName": "Astra",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A quiet, open browser. Local by default. Yours by design.",
+  "license": "MIT",
+  "author": "Astra contributors",
+  "main": "dist/main/main.cjs",
+  "scripts": {
+    "build": "vite build && node scripts/build.mjs",
+    "check": "svelte-check --tsconfig ./tsconfig.json && tsc --noEmit",
+    "start": "npm run build && electron .",
+    "test": "tsx --test tests/*.test.ts",
+    "test:e2e": "playwright test",
+    "verify": "npm run check && npm test && npm run build && npm run test:e2e",
+    "package:linux": "npm run build && electron-builder --linux AppImage deb",
+    "package:dir": "npm run build && electron-builder --dir",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "dependencies": {
+    "better-sqlite3": "13.0.3",
+    "tldts": "^7.0.0"
+  },
+  "devDependencies": {
+    "@fontsource/doto": "^5.2.0",
+    "@playwright/test": "^1.58.0",
+    "@sveltejs/vite-plugin-svelte": "7.3.0",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^24.0.0",
+    "electron": "44.2.0",
+    "electron-builder": "26.15.3",
+    "esbuild": "^0.27.0",
+    "svelte": "5.57.0",
+    "svelte-check": "^4.4.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.0",
+    "vite": "8.2.2"
+  },
+  "build": {
+    "appId": "org.astra.browser",
+    "files": ["dist/**", "package.json"],
+    "asarUnpack": ["node_modules/better-sqlite3/**"],
+    "directories": {"output": "release"},
+    "linux": {"target": ["AppImage", "deb"], "category": "Network", "maintainer": "Astra contributors"},
+    "mac": {"target": ["dmg", "zip"], "category": "public.app-category.productivity"},
+    "win": {"target": ["nsis"]}
+  }
+}
