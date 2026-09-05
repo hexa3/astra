@@ -1,16 +1,19 @@
 export interface Tab {
   id: string; url: string; title: string; loading: boolean;
+  workspaceId?: string;
   canBack: boolean; canForward: boolean; error?: string;
   requests: number; blocked: number; cookiesBlocked: number;
   suspended?: boolean; suspensionReason?: string; lastActiveAt?: number;
   rendererMemoryMB?: number; rendererPid?: number;
 }
 export interface Entry { id: string; url: string; title: string; time: number }
+export interface Workspace { id: string; name: string; lastActiveTabId?: string }
 export interface BrowserState {
   tabs: Tab[]; activeId: string; bookmarks: Entry[]; history: Entry[];
   storage: 'encrypted' | 'memory'; storageMessage: string; vaultLocked: boolean;
   backgroundLimit: number;
-  theme: 'system' | 'dark' | 'light'; panel: 'none' | 'bookmarks' | 'history' | 'privacy' | 'storage';
+  workspaces: Workspace[]; activeWorkspaceId: string;
+  theme: 'system' | 'dark' | 'light'; panel: 'none' | 'bookmarks' | 'history' | 'privacy' | 'storage' | 'workspaces';
 }
 export type Command =
   | { type: 'navigate'; url: string }
@@ -20,6 +23,9 @@ export type Command =
   | { type: 'remove-bookmark'; id: string }
   | { type: 'unlock-vault'; passphrase: string }
   | { type: 'background-limit'; value: number }
+  | { type: 'create-workspace'; name: string }
+  | { type: 'rename-workspace'; id: string; name: string }
+  | { type: 'switch-workspace'; id: string }
   | { type: 'theme'; value: BrowserState['theme'] }
   | { type: 'panel'; value: BrowserState['panel'] };
 export interface AstraAPI {

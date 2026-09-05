@@ -21,7 +21,7 @@ void app.whenReady().then(async () => {
   // A renderer round trip separates the two distinct user decisions.
   await contents.executeJavaScript('document.readyState');
   const tab: Tab = { id: 'guarded', url: 'about:blank', title: 'Guarded fixture', loading: false, canBack: false, canForward: false, requests: 0, blocked: 0, cookiesBlocked: 0 };
-  const state: BrowserState = { tabs: [tab], activeId: 'empty-active-tab', bookmarks: [], history: [], storage: 'memory', storageMessage: 'Test fixture', vaultLocked: false, backgroundLimit: 0, theme: 'dark', panel: 'none' };
+  const state: BrowserState = { tabs: [tab], activeId: 'empty-active-tab', bookmarks: [], history: [], storage: 'memory', storageMessage: 'Test fixture', vaultLocked: false, backgroundLimit: 0, theme: 'dark', panel: 'none', workspaces: [{id: 'personal', name: 'Personal'}], activeWorkspaceId: 'personal' };
   let hibernator: Hibernator;
   await new Promise<void>(resolve => {
     hibernator = new Hibernator(() => state, new Map([[tab.id, view]]), () => {}, resolve);
