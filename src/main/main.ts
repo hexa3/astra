@@ -38,6 +38,7 @@ function persist(): void {
   vault.set('bookmarks', state.bookmarks);
   vault.set('history', state.history);
   vault.set('theme', state.theme);
+  state.storage = vault.mode; state.storageMessage = vault.message; state.vaultLocked = vault.locked;
 }
 function layout(): void {
   if (!win || win.isDestroyed()) return;

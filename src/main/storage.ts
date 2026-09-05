@@ -78,14 +78,29 @@ export class Vault {
   }
   get<T>(id: string, fallback: T): T {
     if (!this.db || !this.key) return (this.memory.get(id) as T | undefined) ?? fallback;
-    const row = this.db.prepare('SELECT payload FROM records WHERE id = ?').get(id) as { payload: Buffer } | undefined;
-    if (!row) return fallback;
-    return JSON.parse(unseal(this.key, row.payload, id)) as T;
+    try {
+      const row = this.db.prepare('SELECT payload FROM records WHERE id = ?').get(id) as { payload: Buffer } | undefined;
+      if (!row) return fallback;
+      const value = JSON.parse(unseal(this.key, row.payload, id)) as T;
+      this.memory.set(id, value);
+      return value;
+    } catch {
+      this.degrade('An encrypted record could not be read. Existing files are preserved; this session is in memory only.');
+      return (this.memory.get(id) as T | undefined) ?? fallback;
+    }
   }
   set(id: string, value: unknown): void {
-    if (!this.db || !this.key) { this.memory.set(id, value); return; }
-    this.db.prepare('INSERT INTO records (id, payload) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET payload = excluded.payload')
-      .run(id, seal(this.key, JSON.stringify(value), id));
+    this.memory.set(id, value);
+    if (!this.db || !this.key) return;
+    try {
+      this.db.prepare('INSERT INTO records (id, payload) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET payload = excluded.payload')
+        .run(id, seal(this.key, JSON.stringify(value), id));
+    } catch { this.degrade('Encrypted storage could not be written. This session is in memory only; check available disk space and file permissions.'); }
+  }
+  private degrade(message: string): void {
+    this.mode = 'memory'; this.message = message;
+    try { this.db?.close(); } catch { /* Preserve the original storage failure. */ }
+    this.db = undefined; this.key?.fill(0); this.key = undefined;
   }
   close(): void { this.db?.close(); this.key?.fill(0); }
 }
