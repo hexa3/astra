@@ -7,11 +7,22 @@ It is not yet a stable release. Verified milestones and limitations live in
 [the build log](docs/progress-log.md); architecture lives in
 [decisions](docs/decisions.md).
 
+[Download the Linux alpha](https://github.com/hexa3/astra/releases/tag/v0.1.0).
+It supports real browsing, vertical tabs, encrypted bookmarks/history, a
+passphrase vault, dark/light themes and a privacy panel with measured counts.
+See [release notes](docs/releases/v0.1.0.md) for verification and limitations.
+
 ## Development
 
 Node.js 24 and a graphical desktop are required. Run `npm ci`, then `npm start`.
 Use `npm run verify` to typecheck, run unit tests, build and exercise the app.
 Linux packages: `npm run package:linux`.
+
+On Arch Linux, electron-builder's bundled Debian packager may require
+`libcrypt.so.1`. You can use your installed Ruby instead: install FPM with
+`gem install --user-install fpm --no-document`, then set `CUSTOM_FPM_PATH` to
+the absolute `bin/fpm` path under `gem environment user_gemhome` when running
+the packaging command. This workaround only affects build tooling.
 
 ## Privacy contract
 
