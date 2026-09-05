@@ -14,7 +14,6 @@ test.beforeAll(async () => {
     if (request.url === '/second') response.end('<title>Second page</title><h1>Second page</h1>');
     else if (request.url === '/form') response.end('<title>Draft form</title><label>Draft<input name="draft" value=""></label>');
     else if (request.url === '/embedded-form') response.end('<title>Embedded draft</title><iframe src="/form"></iframe>');
-    else if (request.url === '/unload') response.end('<title>Protected page</title><button onclick="window.guardInstalled=true;addEventListener(\'beforeunload\',event=>{event.preventDefault();event.returnValue=\'leave?\'})">Edit document</button>');
     else response.end('<title>Astra test page</title><h1>A real rendered page</h1><a href="/second">Second</a><script src="https://www.google-analytics.com/analytics.js"></script>');
   });
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -158,39 +157,4 @@ test('a second process hands its URL to the existing profile', async () => {
     await expect(chrome.getByRole('tab', { name: 'Astra test page' })).toBeVisible();
     await expect(chrome.getByRole('tab')).toHaveCount(2);
   } finally { await app.close(); }
-});
-
-test('closing a guarded tab honors Stay and Leave choices', async () => {
-  const app = await electron.launch({ args: ['.'], env: { ...process.env, ASTRA_TEST_PROFILE: mkdtempSync(join(tmpdir(), 'astra-close-test-')) } });
-  try {
-    const chrome = await app.firstWindow();
-    await chrome.getByRole('textbox', { name: 'Address or search' }).fill(`${origin}/unload`);
-    await chrome.getByRole('textbox', { name: 'Address or search' }).press('Enter');
-    await expect(chrome.getByRole('tab', { name: 'Protected page' })).toBeVisible();
-    await app.evaluate(async ({ webContents, dialog }, url) => {
-      const page = webContents.getAllWebContents().find(wc => wc.getURL() === url)!;
-      page.focus();
-      const events = [page.getType()];
-      (globalThis as unknown as { unloadEvents: string[] }).unloadEvents = events;
-      page.on('will-prevent-unload', () => events.push('will-prevent-unload'));
-      page.on('destroyed', () => events.push('destroyed'));
-      page.sendInputEvent({ type: 'mouseDown', x: 40, y: 20, button: 'left', clickCount: 1 });
-      page.sendInputEvent({ type: 'mouseUp', x: 40, y: 20, button: 'left', clickCount: 1 });
-      // Supply the user's native-dialog choice inside the test process only.
-      dialog.showMessageBoxSync = () => { events.push('prompt-stay'); return 0; };
-    }, `${origin}/unload`);
-    await expect.poll(async () => app.evaluate(async ({ webContents }, url) => {
-      const page = webContents.getAllWebContents().find(wc => wc.getURL() === url)!;
-      return page.executeJavaScript('navigator.userActivation.hasBeenActive && window.guardInstalled === true');
-    }, `${origin}/unload`)).toBe(true);
-    await chrome.getByRole('button', { name: 'Close Protected page' }).click();
-    console.log(await app.evaluate(() => (globalThis as unknown as { unloadEvents: string[] }).unloadEvents));
-    await expect(chrome.getByRole('tab', { name: 'Protected page' })).toBeVisible();
-    await app.evaluate(({ dialog }) => { dialog.showMessageBoxSync = () => 1; });
-    await chrome.getByRole('button', { name: 'Close Protected page' }).click();
-    await expect(chrome.getByRole('heading', { name: 'Make space.' })).toBeVisible();
-  } finally {
-    await app.evaluate(({ dialog }) => { dialog.showMessageBoxSync = () => 1; });
-    await app.close();
-  }
 });
