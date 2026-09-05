@@ -14,6 +14,8 @@ test.beforeAll(async () => {
     if (request.url === '/second') response.end('<title>Second page</title><h1>Second page</h1>');
     else if (request.url === '/form') response.end('<title>Draft form</title><label>Draft<input name="draft" value=""></label>');
     else if (request.url === '/embedded-form') response.end('<title>Embedded draft</title><iframe src="/form"></iframe>');
+    else if (request.url === '/cookies/set') { response.setHeader('Set-Cookie', 'context=personal; SameSite=Lax; Path=/'); response.end('<title>Cookie set</title>Cookie stored'); }
+    else if (request.url === '/cookies/check') response.end(`<title>Cookie check</title><pre id="cookies">${request.headers.cookie ?? ''}</pre>`);
     else response.end('<title>Astra test page</title><h1>A real rendered page</h1><a href="/second">Second</a><script src="https://www.google-analytics.com/analytics.js"></script>');
   });
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -156,5 +158,50 @@ test('a second process hands its URL to the existing profile', async () => {
     expect(code).toBe(0);
     await expect(chrome.getByRole('tab', { name: 'Astra test page' })).toBeVisible();
     await expect(chrome.getByRole('tab')).toHaveCount(2);
+  } finally { await app.close(); }
+});
+
+test('workspaces isolate cookies and switch their visible tabs by keyboard', async () => {
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, ASTRA_TEST_PROFILE: mkdtempSync(join(tmpdir(), 'astra-workspace-test-')) } });
+  try {
+    const chrome = await app.firstWindow();
+    const navigate = async (path: string, title: string) => {
+      await chrome.getByRole('textbox', { name: 'Address or search' }).fill(`${origin}${path}`);
+      await chrome.getByRole('textbox', { name: 'Address or search' }).press('Enter');
+      await expect(chrome.getByRole('tab', { name: title })).toBeVisible();
+    };
+    await navigate('/cookies/set', 'Cookie set');
+    await chrome.getByRole('button', { name: 'Manage workspaces' }).click();
+    await chrome.getByLabel('New workspace name').fill('Work');
+    await chrome.getByRole('button', { name: 'Create workspace', exact: true }).click();
+    await expect(chrome.getByRole('heading', { name: 'Make space.' })).toBeVisible();
+    await expect(chrome.getByRole('tab')).toHaveCount(1);
+    await navigate('/cookies/check', 'Cookie check');
+    const readCookies = () => app.evaluate(async ({ webContents }, url) => {
+      const page = webContents.getAllWebContents().find(wc => wc.getURL() === url)!;
+      return page.executeJavaScript('document.getElementById("cookies").textContent');
+    }, `${origin}/cookies/check`);
+    expect(await readCookies()).toBe('');
+    await chrome.getByRole('combobox', { name: 'Workspace', exact: true }).selectOption('personal');
+    await expect(chrome.getByRole('tab', { name: 'Cookie set' })).toBeVisible();
+    await navigate('/cookies/check', 'Cookie check');
+    const personalCookie = await app.evaluate(async ({ webContents, session }, url) => {
+      const page = webContents.getAllWebContents().find(wc => wc.getURL() === url && wc.session === session.fromPartition('astra-pages'))!;
+      return page.executeJavaScript('document.getElementById("cookies").textContent');
+    }, `${origin}/cookies/check`);
+    expect(personalCookie).toBe('context=personal');
+    const work = (await chrome.evaluate(() => window.astra.snapshot())).workspaces.find(workspace => workspace.name === 'Work')!;
+    await app.evaluate(({ BrowserWindow }) => {
+      // CDP keyboard injection bypasses Electron's before-input-event hook.
+      const contents = BrowserWindow.getAllWindows()[0].webContents;
+      contents.focus();
+      contents.sendInputEvent({ type: 'keyDown', keyCode: 'Right', modifiers: ['control', 'alt'] });
+      contents.sendInputEvent({ type: 'keyUp', keyCode: 'Right', modifiers: ['control', 'alt'] });
+    });
+    await expect(chrome.getByRole('combobox', { name: 'Workspace', exact: true })).toHaveValue(work.id);
+    await chrome.getByRole('button', { name: 'Manage workspaces' }).click();
+    await chrome.getByRole('textbox', { name: 'Current workspace name' }).fill('Research');
+    await chrome.getByRole('button', { name: 'Rename workspace', exact: true }).click();
+    await expect(chrome.getByRole('option', { name: 'Research', exact: true })).toHaveCount(1);
   } finally { await app.close(); }
 });
