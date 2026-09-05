@@ -25,6 +25,13 @@ validation. Tests verify:
   wrong-passphrase rejection, and absence of plaintext browsing strings on disk.
 - First-party cookies still function while third-party request/response headers
   and `document.cookie` reads/writes are blocked.
+- Workspace creation, rename, isolated first-party cookies, keyboard switching,
+  and encrypted restart with tabs restored lazily into their saved workspaces.
+- Background view destruction and restoration, embedded draft protection,
+  actual renderer-memory reporting, and second-instance URL handoff.
+- Local command-bar ranking, cross-workspace tab selection, executable theme
+  and library commands, URL submission, privileged-scheme rejection, Escape,
+  and forward/reverse keyboard focus containment.
 
 `npm run test:live` is a separate, explicit network smoke test that renders
 https://example.com. The default tests need no external response; requests to
