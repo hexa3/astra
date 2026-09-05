@@ -2,8 +2,8 @@ import { dialog } from 'electron';
 import type { BrowserWindow, WebContents } from 'electron';
 
 /** User-requested close. Automatic hibernation never calls this confirmation path. */
-export function requestPageClose(contents: WebContents, window: BrowserWindow): Promise<boolean> {
-  if (contents.isDestroyed()) return Promise.resolve(true);
+export function requestPageClose(contents: WebContents | undefined, window: BrowserWindow): Promise<boolean> {
+  if (!contents || contents.isDestroyed()) return Promise.resolve(true);
   return new Promise(resolve => {
     const finish = (closed: boolean) => {
       clearTimeout(timer);

@@ -272,7 +272,7 @@ app.whenReady().then(async () => {
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   win.webContents.on('will-navigate', event => event.preventDefault());
   bindKeys(win.webContents);
-  installPrivacy(session.fromPartition('astra-pages', { cache: false }), id => state.tabs.find(tab => views.get(tab.id)?.webContents.id === id), schedulePublish);
+  installPrivacy(session.fromPartition('astra-pages', { cache: false }), id => state.tabs.find(tab => views.get(tab.id)?.webContents?.id === id), schedulePublish);
   ipcMain.handle('astra:snapshot', event => { authorize(event); return state; });
   ipcMain.handle('astra:command', async (event, command) => { authorize(event); await dispatch(validate(command)); });
   win.on('resize', layout);
