@@ -5,6 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { Vault } from './storage';
 import { installPrivacy } from './privacy';
+import { Hibernator } from './hibernation';
 import { isWebURL, resolveAddress } from '../shared/navigation';
 import type { BrowserState, Command, Entry, Tab } from '../shared/types';
 
@@ -18,6 +19,8 @@ app.enableSandbox();
 let win: BrowserWindow;
 let vault: Vault;
 let state: BrowserState;
+let hibernator: Hibernator;
+let metricsTimer: ReturnType<typeof setInterval> | undefined;
 let quitting = false;
 let unlockingVault = false;
 let publishTimer: ReturnType<typeof setTimeout> | undefined;
@@ -38,6 +41,7 @@ function persist(): void {
   vault.set('bookmarks', state.bookmarks);
   vault.set('history', state.history);
   vault.set('theme', state.theme);
+  vault.set('background-limit', state.backgroundLimit);
   state.storage = vault.mode; state.storageMessage = vault.message; state.vaultLocked = vault.locked;
 }
 function layout(): void {
@@ -98,6 +102,7 @@ function createView(tab: Tab): WebContentsView {
   };
   wc.on('did-start-loading', update);
   wc.on('did-stop-loading', update);
+  wc.on('did-stop-loading', () => hibernator.schedule());
   wc.on('page-title-updated', (_event, title) => { tab.title = title.slice(0, 500); publish(); });
   const navigated = (url: string) => {
     if (!isWebURL(url)) return;
@@ -133,17 +138,20 @@ function createView(tab: Tab): WebContentsView {
   return view;
 }
 function newTab(url = '', title = 'New tab'): void {
-  const tab: Tab = { id: randomUUID(), url, title, loading: false, canBack: false, canForward: false, requests: 0, blocked: 0, cookiesBlocked: 0 };
+  const tab: Tab = { id: randomUUID(), url, title, loading: false, canBack: false, canForward: false, requests: 0, blocked: 0, cookiesBlocked: 0, lastActiveAt: Date.now() };
   state.tabs.push(tab); state.activeId = tab.id; state.panel = 'none';
   if (url) void createView(tab).webContents.loadURL(url).catch(() => {});
   layout(); publish(); persist();
+  hibernator.schedule();
 }
 function activateTab(id: string): void {
   if (!state.tabs.some(tab => tab.id === id)) return;
   state.activeId = id; state.panel = 'none';
   const tab = active()!;
-  if (tab.url && !views.has(id)) void createView(tab).webContents.loadURL(tab.url).catch(() => {});
+  tab.lastActiveAt = Date.now();
+  if (tab.url && !views.has(id)) void hibernator.restore(tab, createView(tab)).catch(() => {});
   layout(); publish(); contents()?.focus();
+  hibernator.schedule();
 }
 function closeTab(id: string): void {
   const index = state.tabs.findIndex(tab => tab.id === id);
@@ -151,8 +159,9 @@ function closeTab(id: string): void {
   const view = views.get(id);
   if (view) { win.contentView.removeChildView(view); view.webContents.close(); views.delete(id); }
   state.tabs.splice(index, 1);
+  hibernator.forget(id);
   if (!state.tabs.length) newTab();
-  else if (id === state.activeId) state.activeId = state.tabs[Math.min(index, state.tabs.length - 1)].id;
+  else if (id === state.activeId) activateTab(state.tabs[Math.min(index, state.tabs.length - 1)].id);
   layout(); publish(); persist();
 }
 function toggleBookmark(): void {
@@ -176,6 +185,7 @@ function validate(raw: unknown): Command {
   if (['activate-tab', 'close-tab', 'remove-bookmark'].includes(command.type) && typeof command.id === 'string' && command.id.length <= 100) return raw as Command;
   if (command.type === 'theme' && ['system', 'dark', 'light'].includes(String(command.value))) return raw as Command;
   if (command.type === 'unlock-vault' && typeof command.passphrase === 'string' && command.passphrase.length >= 12 && command.passphrase.length <= 1024) return raw as Command;
+  if (command.type === 'background-limit' && Number.isInteger(command.value) && Number(command.value) >= 0 && Number(command.value) <= 32) return raw as Command;
   if (command.type === 'panel' && ['none', 'bookmarks', 'history', 'privacy', 'storage'].includes(String(command.value))) return raw as Command;
   throw new Error('Unsupported browser command.');
 }
@@ -189,6 +199,7 @@ async function dispatch(command: Command): Promise<void> {
       const merge = (saved: Entry[], current: Entry[]) => [...new Map([...saved, ...current].map(entry => [entry.id, entry])).values()].sort((a, b) => b.time - a.time);
       state.bookmarks = merge(vault.get<Entry[]>('bookmarks', []), state.bookmarks);
       state.history = merge(vault.get<Entry[]>('history', []), state.history).slice(0, 2000);
+      state.backgroundLimit = vault.get('background-limit', state.backgroundLimit);
       for (const item of vault.get<{url: string; title: string}[]>('session', []).slice(0, 50)) {
         if (isWebURL(item.url) && !state.tabs.some(tab => tab.url === item.url)) state.tabs.push({ id: randomUUID(), url: item.url, title: item.title, loading: false, canBack: false, canForward: false, requests: 0, blocked: 0, cookiesBlocked: 0 });
       }
@@ -212,6 +223,7 @@ async function dispatch(command: Command): Promise<void> {
     case 'forward': if (wc?.navigationHistory.canGoForward()) wc.navigationHistory.goForward(); break;
     case 'reload': if (active()) { active()!.error = undefined; layout(); wc?.reload(); } break;
     case 'stop': wc?.stop(); break;
+    case 'background-limit': state.backgroundLimit = command.value; persist(); hibernator.schedule(); break;
     case 'bookmark': toggleBookmark(); break;
     case 'remove-bookmark': state.bookmarks = state.bookmarks.filter(item => item.id !== command.id); persist(); break;
     case 'clear-history': state.history = []; persist(); break;
@@ -222,12 +234,26 @@ async function dispatch(command: Command): Promise<void> {
 }
 app.whenReady().then(async () => {
   vault = new Vault(join(app.getPath('userData'), 'vault'));
-  state = { tabs: [], activeId: '', bookmarks: vault.get<Entry[]>('bookmarks', []), history: vault.get<Entry[]>('history', []), storage: vault.mode, storageMessage: vault.message, vaultLocked: vault.locked, theme: vault.get('theme', 'system'), panel: 'none' };
+  state = { tabs: [], activeId: '', bookmarks: vault.get<Entry[]>('bookmarks', []), history: vault.get<Entry[]>('history', []), storage: vault.mode, storageMessage: vault.message, vaultLocked: vault.locked, theme: vault.get('theme', 'system'), panel: 'none', backgroundLimit: vault.get('background-limit', 6) };
   nativeTheme.themeSource = state.theme;
   win = new BrowserWindow({ width: 1280, height: 840, minWidth: 760, minHeight: 520, title: 'Astra', backgroundColor: '#000000', show: false, autoHideMenuBar: true,
     webPreferences: { preload: join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true, spellcheck: false, webviewTag: false, partition: 'astra-chrome' },
   });
   Menu.setApplicationMenu(null);
+  hibernator = new Hibernator(() => state, views, view => { if (!win.isDestroyed()) win.contentView.removeChildView(view); }, () => {
+    if (!quitting && active()?.suspended && !views.has(state.activeId)) activateTab(state.activeId);
+    layout(); publish();
+  });
+  metricsTimer = setInterval(() => {
+    const metrics = new Map(app.getAppMetrics().map(metric => [metric.pid, metric]));
+    for (const tab of state.tabs) {
+      const wc = views.get(tab.id)?.webContents;
+      tab.rendererPid = wc && !wc.isDestroyed() ? wc.getOSProcessId() : undefined;
+      const metric = tab.rendererPid ? metrics.get(tab.rendererPid) : undefined;
+      tab.rendererMemoryMB = metric ? Math.round(metric.memory.workingSetSize / 1024) : undefined;
+    }
+    hibernator.schedule(); publish();
+  }, 5000);
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   win.webContents.on('will-navigate', event => event.preventDefault());
   bindKeys(win.webContents);
@@ -235,7 +261,7 @@ app.whenReady().then(async () => {
   ipcMain.handle('astra:snapshot', event => { authorize(event); return state; });
   ipcMain.handle('astra:command', async (event, command) => { authorize(event); await dispatch(validate(command)); });
   win.on('resize', layout);
-  win.on('close', () => { persist(); quitting = true; for (const view of views.values()) view.webContents.close(); });
+  win.on('close', () => { persist(); quitting = true; hibernator.stop(); for (const view of views.values()) view.webContents.close(); });
   const saved = vault.get<{ url: string; title: string }[]>('session', []);
   // Saved pages restore on explicit activation; startup makes no website requests.
   newTab();
@@ -248,4 +274,4 @@ app.whenReady().then(async () => {
   if (!app.isPackaged && process.env.ASTRA_SMOKE_URL) await dispatch({ type: 'navigate', url: process.env.ASTRA_SMOKE_URL });
 }).catch(error => { console.error('Astra startup failed:', error); app.exit(1); });
 app.on('window-all-closed', () => app.quit());
-app.on('will-quit', () => { if (publishTimer) clearTimeout(publishTimer); vault?.close(); });
+app.on('will-quit', () => { if (publishTimer) clearTimeout(publishTimer); if (metricsTimer) clearInterval(metricsTimer); hibernator?.stop(); vault?.close(); });

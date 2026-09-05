@@ -2,11 +2,14 @@ export interface Tab {
   id: string; url: string; title: string; loading: boolean;
   canBack: boolean; canForward: boolean; error?: string;
   requests: number; blocked: number; cookiesBlocked: number;
+  suspended?: boolean; suspensionReason?: string; lastActiveAt?: number;
+  rendererMemoryMB?: number; rendererPid?: number;
 }
 export interface Entry { id: string; url: string; title: string; time: number }
 export interface BrowserState {
   tabs: Tab[]; activeId: string; bookmarks: Entry[]; history: Entry[];
   storage: 'encrypted' | 'memory'; storageMessage: string; vaultLocked: boolean;
+  backgroundLimit: number;
   theme: 'system' | 'dark' | 'light'; panel: 'none' | 'bookmarks' | 'history' | 'privacy' | 'storage';
 }
 export type Command =
@@ -16,6 +19,7 @@ export type Command =
   | { type: 'back' | 'forward' | 'reload' | 'stop' | 'bookmark' | 'clear-history' }
   | { type: 'remove-bookmark'; id: string }
   | { type: 'unlock-vault'; passphrase: string }
+  | { type: 'background-limit'; value: number }
   | { type: 'theme'; value: BrowserState['theme'] }
   | { type: 'panel'; value: BrowserState['panel'] };
 export interface AstraAPI {

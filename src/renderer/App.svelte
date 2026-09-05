@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import type { BrowserState, Command } from '../shared/types';
   import Icon from './Icon.svelte';
+  import PrivacyPanel from './PrivacyPanel.svelte';
   let state: BrowserState | undefined;
   let address = '';
   let search = '';
@@ -70,9 +71,10 @@
     <div class="tabs" role="tablist" aria-label="Open tabs" aria-orientation="vertical">
       {#each state?.tabs ?? [] as item (item.id)}
         <div class:active={item.id === state?.activeId} class="tab-row">
-          <button class="tab" role="tab" aria-selected={item.id === state?.activeId} title={item.url || 'New tab'} onclick={() => run({ type: 'activate-tab', id: item.id })}>
+          <button class="tab" role="tab" aria-selected={item.id === state?.activeId} title={`${item.url || 'New tab'}${item.suspended ? ' · Sleeping; select to restore' : item.suspensionReason ? ` · Kept awake: ${item.suspensionReason}` : ''}`} onclick={() => run({ type: 'activate-tab', id: item.id })}>
             <span class:loading={item.loading} class="tab-symbol" aria-hidden="true">{item.url ? '◌' : '+'}</span>
             <span class="tab-title">{item.title}</span>
+            {#if item.suspended}<span class="sleep-indicator" aria-label="Sleeping">z</span>{/if}
           </button>
           <button class="close-tab" aria-label={`Close ${item.title}`} onclick={() => run({ type: 'close-tab', id: item.id })}><Icon name="close" /></button>
         </div>
@@ -118,13 +120,7 @@
         </div>
       </section>
     {:else if state?.panel === 'privacy'}
-      <section class="panel privacy-panel">
-        <div class="eyebrow">NOTHING TO HIDE</div>
-        <div class="panel-title"><h1>Behind the page</h1><button aria-label="Close privacy panel" onclick={() => run({ type: 'panel', value: 'none' })}><Icon name="close" /></button></div>
-        <p class="muted">Observed for this tab since it opened. Reloading keeps these counts.</p>
-        <div class="metrics"><div><strong>{tab?.requests ?? 0}</strong><span>Network requests</span></div><div><strong>{tab?.blocked ?? 0}</strong><span>Tracker requests blocked</span></div><div><strong>{tab?.cookiesBlocked ?? 0}</strong><span>Cookie headers blocked</span></div></div>
-        <dl class="privacy-details"><div><dt>Tracker protection</dt><dd>On · bundled basic host list</dd></div><div><dt>Third-party cookies</dt><dd>Blocked · HTTP headers and document access</dd></div><div><dt>Site permissions</dt><dd>Camera, microphone, location and notifications denied</dd></div><div><dt>Website storage</dt><dd>Memory only · cleared when you quit</dd></div><div><dt>Browser records</dt><dd>{state.storageMessage}</dd></div><div><dt>Telemetry</dt><dd>None</dd></div></dl>
-      </section>
+      <PrivacyPanel {state} {tab} {run} />
     {:else if tab?.error}
       <section class="newtab error-page"><div class="eyebrow">CONNECTION INTERRUPTED</div><h1>This page couldn’t load.</h1><p>{tab.error}</p><p class="muted">{tab.url}</p><button class="primary-action" onclick={() => run({ type: 'reload' })}>Try again<Icon name="reload" /></button></section>
     {:else if !tab?.url}

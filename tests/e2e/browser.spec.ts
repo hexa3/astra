@@ -10,6 +10,8 @@ test.beforeAll(async () => {
   server = createServer((request, response) => {
     response.setHeader('Content-Type', 'text/html');
     if (request.url === '/second') response.end('<title>Second page</title><h1>Second page</h1>');
+    else if (request.url === '/form') response.end('<title>Draft form</title><label>Draft<input name="draft" value=""></label>');
+    else if (request.url === '/embedded-form') response.end('<title>Embedded draft</title><iframe src="/form"></iframe>');
     else response.end('<title>Astra test page</title><h1>A real rendered page</h1><a href="/second">Second</a><script src="https://www.google-analytics.com/analytics.js"></script>');
   });
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -46,7 +48,7 @@ test('launches, renders a page and supports navigation, tabs and privacy', async
     expect(snapshot.tabs[0].requests).toBeGreaterThan(snapshot.tabs[0].blocked);
     await expect(chrome.getByText('None', { exact: true })).toBeVisible();
     await chrome.getByRole('button', { name: 'Close privacy panel' }).click();
-    await chrome.getByRole('button', { name: 'New tab', exact: false }).click();
+    await chrome.getByRole('button', { name: /^New tab/ }).click();
     await expect(chrome.getByRole('tab')).toHaveCount(2);
     await chrome.getByRole('button', { name: 'Close New tab' }).click();
     await expect(chrome.getByRole('tab')).toHaveCount(1);
@@ -94,5 +96,47 @@ test('passphrase vault persists encrypted records and rejects a wrong key', asyn
     expect(restored.tabs.some(tab => tab.url === `${origin}/`)).toBe(true);
     await chrome.getByRole('tab', { name: 'Astra test page' }).click();
     await expect.poll(async () => (await chrome.evaluate(() => window.astra.snapshot())).history.length).toBeGreaterThan(restored.history.length);
+  } finally { await app.close(); }
+});
+
+test('hibernation destroys page views, restores navigation and protects frame drafts', async () => {
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, ASTRA_TEST_PROFILE: mkdtempSync(join(tmpdir(), 'astra-sleep-test-')) } });
+  try {
+    const chrome = await app.firstWindow();
+    await chrome.getByRole('button', { name: 'Behind the page' }).click();
+    await chrome.getByLabel('Keep up to').selectOption('0');
+    await chrome.getByRole('button', { name: 'Close privacy panel' }).click();
+    const navigate = async (url: string, title: string) => {
+      await chrome.getByRole('textbox', { name: 'Address or search' }).fill(url);
+      await chrome.getByRole('textbox', { name: 'Address or search' }).press('Enter');
+      await expect(chrome.getByRole('tab', { name: title })).toBeVisible();
+    };
+    await navigate(origin, 'Astra test page');
+    await navigate(`${origin}/second`, 'Second page');
+    await chrome.getByRole('button', { name: /^New tab/ }).click();
+    await expect.poll(async () => (await chrome.evaluate(() => window.astra.snapshot())).tabs[0].suspended).toBe(true);
+    expect(await app.evaluate(({ webContents }) => webContents.getAllWebContents().filter(wc => wc.getURL().startsWith('http://127.0.0.1')).length)).toBe(0);
+    await chrome.getByRole('tab', { name: 'Second page', exact: false }).click();
+    await expect(chrome.getByRole('button', { name: 'Back', exact: true })).toBeEnabled();
+    await chrome.getByRole('button', { name: 'Back', exact: true }).click();
+    await expect(chrome.getByRole('tab', { name: 'Astra test page' })).toBeVisible();
+    await navigate(`${origin}/embedded-form`, 'Embedded draft');
+    await expect.poll(async () => app.evaluate(async ({ webContents }, url) => {
+      const page = webContents.getAllWebContents().find(wc => wc.getURL() === url)!;
+      return page.executeJavaScript('document.querySelector("iframe").contentDocument.querySelector("input") !== null');
+    }, `${origin}/embedded-form`)).toBe(true);
+    await app.evaluate(async ({ webContents }, url) => {
+      const page = webContents.getAllWebContents().find(wc => wc.getURL() === url)!;
+      await page.executeJavaScript('document.querySelector("iframe").contentDocument.querySelector("input").value="Unsaved draft"');
+    }, `${origin}/embedded-form`);
+    await chrome.getByRole('button', { name: /^New tab/ }).click();
+    await expect.poll(async () => (await chrome.evaluate(() => window.astra.snapshot())).tabs[0].suspensionReason).toBe('Unsaved form or editable content');
+    expect((await chrome.evaluate(() => window.astra.snapshot())).tabs[0].suspended).not.toBe(true);
+    await chrome.getByRole('tab', { name: 'Embedded draft' }).click();
+    expect(await app.evaluate(async ({ webContents }, url) => {
+      const page = webContents.getAllWebContents().find(wc => wc.getURL() === url)!;
+      return page.executeJavaScript('document.querySelector("iframe").contentDocument.querySelector("input").value');
+    }, `${origin}/embedded-form`)).toBe('Unsaved draft');
+    await expect.poll(async () => (await chrome.evaluate(() => window.astra.snapshot())).tabs[0].rendererMemoryMB, { timeout: 10000 }).toBeGreaterThan(0);
   } finally { await app.close(); }
 });
