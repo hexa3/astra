@@ -260,7 +260,7 @@ async function dispatch(command: Command): Promise<void> {
       const tab = active(); if (!tab) return;
       const url = resolveAddress(command.url);
       if (!url) break;
-      tab.error = undefined; state.panel = 'none';
+      state.panel = 'none';
       if (url) {
         const view = views.get(tab.id) ?? createView(tab);
         void view.webContents.loadURL(url).catch(() => {});
@@ -287,7 +287,6 @@ async function dispatch(command: Command): Promise<void> {
     case 'reload': {
       const tab = active();
       if (tab?.error && tab.url) {
-        tab.error = undefined;
         void (wc ?? createView(tab).webContents).loadURL(tab.url).catch(() => {});
       } else wc?.reload();
       layout(); break;

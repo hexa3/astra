@@ -328,6 +328,11 @@ test('address identifies the committed page after stopped and no-content navigat
     await address.fill(`${origin}/retry`); await address.press('Enter');
     await expect(chrome.getByRole('heading', { name: 'This page couldn’t load.' })).toBeVisible();
     await expect(address).toHaveValue(`${origin}/retry`);
+    await address.fill(`${origin}/slow`); await address.press('Enter');
+    await expect(chrome.getByRole('button', { name: 'Stop loading', exact: true })).toBeVisible();
+    expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].contentView.children.every(view => !view.getVisible()))).toBe(true);
+    await chrome.getByRole('button', { name: 'Stop loading', exact: true }).click();
+    await expect(chrome.getByRole('button', { name: 'Reload', exact: true })).toBeVisible();
     failRetry = false;
     await chrome.getByRole('button', { name: 'Try again' }).click();
     await expect(chrome.getByRole('tab', { name: 'Recovered page' })).toBeVisible();
