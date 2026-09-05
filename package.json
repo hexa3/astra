@@ -8,12 +8,16 @@
   "license": "MIT",
   "author": "Astra contributors",
   "homepage": "https://github.com/hexa3/astra",
-  "repository": { "type": "git", "url": "https://github.com/hexa3/astra.git" },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hexa3/astra.git"
+  },
   "desktopName": "astra-browser.desktop",
   "main": "dist/main/main.cjs",
   "scripts": {
     "build": "vite build && node scripts/build.mjs",
     "check": "svelte-check --tsconfig ./tsconfig.json && tsc --noEmit",
+    "format:css": "prettier src/renderer/style.css --write",
     "start": "npm run build && electron .",
     "test": "tsx --test tests/*.test.ts",
     "test:e2e": "playwright test",
@@ -37,6 +41,7 @@
     "electron": "44.2.0",
     "electron-builder": "26.15.3",
     "esbuild": "^0.28.2",
+    "prettier": "3.9.6",
     "svelte": "5.57.0",
     "svelte-check": "^4.4.0",
     "tsx": "^4.21.0",
@@ -45,16 +50,47 @@
   },
   "build": {
     "appId": "org.astra.browser",
-    "files": ["dist/**", "package.json"],
-    "asarUnpack": ["node_modules/better-sqlite3/**"],
-    "extraResources": [
-      {"from": "LICENSE", "to": "licenses/ASTRA-MIT.txt"},
-      {"from": "LICENSES", "to": "licenses"}
+    "files": [
+      "dist/**",
+      "package.json"
     ],
-    "directories": {"output": "release"},
+    "asarUnpack": [
+      "node_modules/better-sqlite3/**"
+    ],
+    "extraResources": [
+      {
+        "from": "LICENSE",
+        "to": "licenses/ASTRA-MIT.txt"
+      },
+      {
+        "from": "LICENSES",
+        "to": "licenses"
+      }
+    ],
+    "directories": {
+      "output": "release"
+    },
     "publish": null,
-    "linux": {"target": ["AppImage", "deb"], "category": "Network", "maintainer": "Astra contributors", "syncDesktopName": true},
-    "mac": {"target": ["dmg", "zip"], "category": "public.app-category.productivity"},
-    "win": {"target": ["nsis"]}
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Network",
+      "maintainer": "Astra contributors",
+      "syncDesktopName": true
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.productivity"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    }
   }
 }
