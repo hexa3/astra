@@ -1,6 +1,7 @@
 import { app, BrowserWindow, WebContentsView, dialog } from 'electron';
 import assert from 'node:assert/strict';
-import { requestPageClose } from '../../src/main/lifecycle';
+import { createServer } from 'node:http';
+import { requestPageClose, installNavigationConfirmation } from '../../src/main/lifecycle';
 import { Hibernator } from '../../src/main/hibernation';
 import type { BrowserState, Tab } from '../../src/shared/types';
 
@@ -11,6 +12,8 @@ void app.whenReady().then(async () => {
   const view = new WebContentsView({ webPreferences: { sandbox: true, nodeIntegration: false, contextIsolation: true, partition: 'native-test-page' } });
   win.contentView.addChildView(view);
   const contents = view.webContents;
+  let hibernator: Hibernator | undefined;
+  installNavigationConfirmation(contents, win, () => hibernator?.isSuspending('guarded') ?? false);
   await contents.loadURL('about:blank');
   await contents.executeJavaScript('addEventListener("beforeunload", event => { event.preventDefault(); event.returnValue="leave?"; }); null');
   let choices = 0;
@@ -22,7 +25,6 @@ void app.whenReady().then(async () => {
   await contents.executeJavaScript('document.readyState');
   const tab: Tab = { id: 'guarded', url: 'about:blank', title: 'Guarded fixture', loading: false, canBack: false, canForward: false, requests: 0, blocked: 0, cookiesBlocked: 0 };
   const state: BrowserState = { tabs: [tab], activeId: 'empty-active-tab', bookmarks: [], history: [], storage: 'memory', storageMessage: 'Test fixture', vaultLocked: false, backgroundLimit: 0, theme: 'dark', panel: 'none', workspaces: [{id: 'personal', name: 'Personal'}], activeWorkspaceId: 'personal' };
-  let hibernator: Hibernator;
   await new Promise<void>(resolve => {
     hibernator = new Hibernator(() => state, new Map([[tab.id, view]]), () => {}, resolve);
     hibernator.schedule();
@@ -36,6 +38,26 @@ void app.whenReady().then(async () => {
   assert.equal(await requestPageClose(contents, win), true, 'Leave must close the page');
   assert.equal(contents.isDestroyed(), true);
   assert.equal(choices, 2);
-  console.log('PASS: native Stay, Leave and automatic hibernation protection without a DevTools client');
+  const server = createServer((request, response) => response.end(`<title>${request.url}</title><h1>Navigation fixture</h1>`));
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+  const origin = `http://127.0.0.1:${(server.address() as {port: number}).port}`;
+  const navigationView = new WebContentsView({ webPreferences: { sandbox: true, nodeIntegration: false, contextIsolation: true, partition: 'native-navigation-test' } });
+  win.contentView.addChildView(navigationView);
+  const page = navigationView.webContents;
+  installNavigationConfirmation(page, win, () => false);
+  await page.loadURL(`${origin}/first`);
+  await page.executeJavaScript('addEventListener("beforeunload", event => { event.preventDefault(); event.returnValue="leave?"; }); null', true);
+  dialog.showMessageBoxSync = () => { choices++; return 0; };
+  await page.loadURL(`${origin}/second`).catch(() => {});
+  assert.equal(page.getURL(), `${origin}/first`, 'Stay must preserve the committed document URL');
+  assert.equal(choices, 3, 'Navigation must offer the same explicit choice as closing');
+  await page.executeJavaScript('document.readyState');
+  dialog.showMessageBoxSync = () => { choices++; return 1; };
+  await page.loadURL(`${origin}/second`);
+  assert.equal(page.getURL(), `${origin}/second`, 'Leave must permit the requested navigation');
+  assert.equal(choices, 4);
+  page.close();
+  await new Promise<void>(resolve => server.close(() => resolve()));
+  console.log('PASS: native close and navigation Stay/Leave; silent automatic hibernation protection');
   win.destroy(); app.exit(0);
 }).catch(error => { console.error(error); app.exit(1); });

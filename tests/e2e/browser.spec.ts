@@ -8,10 +8,17 @@ import { spawn } from 'node:child_process';
 
 let server: Server;
 let origin: string;
+let failRetry = true;
 test.beforeAll(async () => {
   server = createServer((request, response) => {
     response.setHeader('Content-Type', 'text/html');
-    if (request.url === '/second') response.end('<title>Second page</title><h1>Second page</h1>');
+    if (request.url === '/no-content') { response.statusCode = 204; response.end(); }
+    else if (request.url === '/slow') {
+      const timer = setTimeout(() => response.end('<title>Slow page</title><h1>Slow response</h1>'), 10000);
+      response.on('close', () => clearTimeout(timer));
+    }
+    else if (request.url === '/retry') { if (failRetry) request.socket.destroy(); else response.end('<title>Recovered page</title><h1>Recovered</h1>'); }
+    else if (request.url === '/second') response.end('<title>Second page</title><h1>Second page</h1>');
     else if (request.url === '/form') response.end('<title>Draft form</title><label>Draft<input name="draft" value=""></label>');
     else if (request.url === '/embedded-form') response.end('<title>Embedded draft</title><iframe src="/form"></iframe>');
     else if (request.url === '/cookies/set') { response.setHeader('Set-Cookie', 'context=personal; SameSite=Lax; Path=/'); response.end('<title>Cookie set</title>Cookie stored'); }
@@ -289,5 +296,41 @@ test('command bar jumps across workspaces and executes real browser actions', as
     await expect(chrome.getByText('No matching local results.')).toBeVisible();
     await query.press('Escape');
     await expect(chrome.getByRole('dialog', {name: 'Command bar'})).toHaveCount(0);
+  } finally { await app.close(); }
+});
+
+test('address identifies the committed page after stopped and no-content navigation', async () => {
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, ASTRA_TEST_PROFILE: mkdtempSync(join(tmpdir(), 'astra-address-test-')) } });
+  try {
+    const chrome = await app.firstWindow();
+    const address = chrome.getByRole('textbox', { name: 'Address or search' });
+    await address.fill(origin); await address.press('Enter');
+    await expect(chrome.getByRole('tab', { name: 'Astra test page' })).toBeVisible();
+    await address.fill(`${origin}/slow`); await address.press('Enter');
+    await expect(chrome.getByRole('button', { name: 'Stop loading', exact: true })).toBeVisible();
+    await expect(address).toHaveValue(`${origin}/`);
+    await chrome.getByRole('button', { name: 'Stop loading', exact: true }).click();
+    await expect(chrome.getByRole('button', { name: 'Reload', exact: true })).toBeVisible();
+    await expect(address).toHaveValue(`${origin}/`);
+    await address.fill(`${origin}/no-content`); await address.press('Enter');
+    await expect.poll(async () => {
+      const snapshot = await chrome.evaluate(() => window.astra.snapshot());
+      return snapshot.tabs.find(tab => tab.id === snapshot.activeId)?.loading;
+    }).toBe(false);
+    await expect(address).toHaveValue(`${origin}/`);
+    expect(await app.evaluate(async ({ webContents }) => {
+      const page = webContents.getAllWebContents().find(contents => contents.getURL().startsWith('http:'))!;
+      return page.executeJavaScript('document.body.innerText');
+    })).toContain('A real rendered page');
+    await address.fill(''); await address.press('Enter');
+    await expect(address).toHaveValue(`${origin}/`);
+    failRetry = true;
+    await address.fill(`${origin}/retry`); await address.press('Enter');
+    await expect(chrome.getByRole('heading', { name: 'This page couldn’t load.' })).toBeVisible();
+    await expect(address).toHaveValue(`${origin}/retry`);
+    failRetry = false;
+    await chrome.getByRole('button', { name: 'Try again' }).click();
+    await expect(chrome.getByRole('tab', { name: 'Recovered page' })).toBeVisible();
+    await expect(address).toHaveValue(`${origin}/retry`);
   } finally { await app.close(); }
 });

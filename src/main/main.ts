@@ -6,7 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { Vault } from './storage';
 import { installPrivacy } from './privacy';
 import { Hibernator } from './hibernation';
-import { requestPageClose } from './lifecycle';
+import { requestPageClose, installNavigationConfirmation } from './lifecycle';
 import { createTab, restoreSavedTabs } from './session-state';
 import { isWebURL, resolveAddress } from '../shared/navigation';
 import { validateCommand } from '../shared/commands';
@@ -90,7 +90,7 @@ function bindKeys(wc: WebContents): void {
     };
     if (mod && key === 't') action = () => { newTab(); shortcut('address'); };
     if (mod && key === 'w') action = () => closeTab(state.activeId);
-    if ((mod && key === 'r') || key === 'f5') action = () => contents()?.reload();
+    if ((mod && key === 'r') || key === 'f5') action = () => { void dispatch({ type: 'reload' }); };
     if (mod && key === 'd') action = toggleBookmark;
     if (mod && key === 'h') action = () => { state.panel = 'history'; layout(); publish(); };
     if (mod && key === 'tab') action = () => {
@@ -119,6 +119,7 @@ function createView(tab: Tab): WebContentsView {
   views.set(tab.id, view);
   win.contentView.addChildView(view);
   const wc = view.webContents;
+  installNavigationConfirmation(wc, win, () => hibernator.isSuspending(tab.id));
   bindKeys(wc);
   wc.setWindowOpenHandler(({ url }) => {
     if (isWebURL(url)) newTab(url);
@@ -133,7 +134,10 @@ function createView(tab: Tab): WebContentsView {
     publish();
   };
   wc.on('did-start-loading', update);
-  wc.on('did-stop-loading', update);
+  wc.on('did-stop-loading', () => {
+    if (!tab.error) tab.url = isWebURL(wc.getURL()) ? wc.getURL() : '';
+    update(); layout();
+  });
   wc.on('did-stop-loading', () => hibernator.schedule());
   wc.on('page-title-updated', (_event, title) => { tab.title = title.slice(0, 500); publish(); });
   const navigated = (url: string) => {
@@ -150,8 +154,11 @@ function createView(tab: Tab): WebContentsView {
     state.history = state.history.slice(0, 2000);
     persist(); update();
   });
-  wc.on('did-fail-load', (_event, code, description, _url, mainFrame) => {
-    if (mainFrame && code !== -3) { tab.error = `${description} (${code})`; tab.loading = false; layout(); publish(); }
+  wc.on('did-fail-load', (_event, code, description, url, mainFrame) => {
+    if (mainFrame && code !== -3) {
+      if (isWebURL(url)) tab.url = url;
+      tab.error = `${description} (${code})`; tab.loading = false; layout(); publish();
+    }
   });
   wc.on('render-process-gone', (_event, details) => {
     if (quitting) return;
@@ -252,7 +259,8 @@ async function dispatch(command: Command): Promise<void> {
     case 'navigate': {
       const tab = active(); if (!tab) return;
       const url = resolveAddress(command.url);
-      tab.url = url; tab.error = undefined; state.panel = 'none';
+      if (!url) break;
+      tab.error = undefined; state.panel = 'none';
       if (url) {
         const view = views.get(tab.id) ?? createView(tab);
         void view.webContents.loadURL(url).catch(() => {});
@@ -276,7 +284,14 @@ async function dispatch(command: Command): Promise<void> {
     case 'close-tab': await closeTab(command.id); break;
     case 'back': if (wc?.navigationHistory.canGoBack()) wc.navigationHistory.goBack(); break;
     case 'forward': if (wc?.navigationHistory.canGoForward()) wc.navigationHistory.goForward(); break;
-    case 'reload': if (active()) { active()!.error = undefined; layout(); wc?.reload(); } break;
+    case 'reload': {
+      const tab = active();
+      if (tab?.error && tab.url) {
+        tab.error = undefined;
+        void (wc ?? createView(tab).webContents).loadURL(tab.url).catch(() => {});
+      } else wc?.reload();
+      layout(); break;
+    }
     case 'stop': wc?.stop(); break;
     case 'background-limit': state.backgroundLimit = command.value; persist(); hibernator.schedule(); break;
     case 'bookmark': toggleBookmark(); break;

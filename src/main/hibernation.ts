@@ -18,11 +18,13 @@ export class Hibernator {
   private timer?: ReturnType<typeof setTimeout>;
   private running = false;
   private stopped = false;
+  private suspending = new Set<string>();
   constructor(private state: () => BrowserState, private views: Map<string, WebContentsView>, private detach: (view: WebContentsView) => void, private changed: () => void, private protectedTab: (id: string) => boolean = () => false) {}
   schedule(): void {
     if (this.stopped || this.timer) return;
     this.timer = setTimeout(() => { this.timer = undefined; void this.enforce(); }, 300);
   }
+  isSuspending(id: string): boolean { return this.suspending.has(id); }
   private async enforce(): Promise<void> {
     if (this.running || this.stopped) return;
     this.running = true;
@@ -50,7 +52,7 @@ export class Hibernator {
       if (this.stopped || tab.id === this.state().activeId || this.protectedTab(tab.id) || wc.isDestroyed()) return;
       const saved: SleepingPage = { entries: wc.navigationHistory.getAllEntries(), index: wc.navigationHistory.getActiveIndex(), x: activity.x, y: activity.y };
       await new Promise<void>(resolve => {
-        const done = () => { clearTimeout(timeout); wc.removeListener('destroyed', destroyed); wc.removeListener('will-prevent-unload', prevented); resolve(); };
+        const done = () => { this.suspending.delete(tab.id); clearTimeout(timeout); wc.removeListener('destroyed', destroyed); wc.removeListener('will-prevent-unload', prevented); resolve(); };
         const destroyed = () => {
           if (this.views.get(tab.id) === view) {
             this.views.delete(tab.id); this.detach(view);
@@ -63,6 +65,7 @@ export class Hibernator {
         const prevented = () => { tab.suspensionReason = 'Page requested to stay open'; done(); };
         const timeout = setTimeout(done, 2000);
         wc.once('destroyed', destroyed); wc.once('will-prevent-unload', prevented);
+        this.suspending.add(tab.id);
         wc.close({ waitForBeforeUnload: true });
       });
     } catch { tab.suspensionReason = 'Page activity could not be checked'; }

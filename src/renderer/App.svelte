@@ -12,7 +12,6 @@
   let addressInput: HTMLInputElement;
   let addressFocused = false;
   let previousId = '';
-  let previousUrl = '';
   let passphrase = '';
   let confirmPassphrase = '';
   let unlocking = false;
@@ -34,8 +33,8 @@
   function receive(next: BrowserState) {
     state = next;
     const current = next.tabs.find(item => item.id === next.activeId);
-    if (current && (current.id !== previousId || current.url !== previousUrl && !addressFocused)) address = current.url;
-    previousId = current?.id ?? ''; previousUrl = current?.url ?? '';
+    if (current && (current.id !== previousId || !addressFocused)) address = current.url;
+    previousId = current?.id ?? '';
     document.documentElement.dataset.theme = next.theme;
   }
   function focusAddress() { addressInput?.focus(); addressInput?.select(); }
@@ -61,7 +60,7 @@
       <button aria-label="Forward" title="Forward · Alt+Right" disabled={!tab?.canForward} onclick={() => run({ type: 'forward' })}><Icon name="forward" /></button>
       <button aria-label={tab?.loading ? 'Stop loading' : 'Reload'} title="Reload · Ctrl+R" disabled={!tab?.url} onclick={() => run({ type: tab?.loading ? 'stop' : 'reload' })}><Icon name={tab?.loading ? 'close' : 'reload'} /></button>
     </div>
-    <form class="address" onsubmit={event => { event.preventDefault(); addressInput.blur(); run({ type: 'navigate', url: address }); }}>
+    <form class="address" onsubmit={event => { event.preventDefault(); const target = address; addressInput.blur(); address = tab?.url ?? ''; run({ type: 'navigate', url: target }); }}>
       <Icon name={tab?.url.startsWith('https:') ? 'shield' : 'globe'} />
       <input bind:this={addressInput} bind:value={address} onfocus={() => addressFocused = true} onblur={() => addressFocused = false} aria-label="Address or search" placeholder="Search or enter an address" autocomplete="off" spellcheck="false" />
       <span class="key-hint">Ctrl L</span>
