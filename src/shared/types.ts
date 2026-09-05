@@ -13,15 +13,16 @@ export interface BrowserState {
   storage: 'encrypted' | 'memory'; storageMessage: string; vaultLocked: boolean;
   backgroundLimit: number;
   sidebarCollapsed?: boolean;
+  split?: { leftId: string; rightId: string };
   workspaces: Workspace[]; activeWorkspaceId: string;
   theme: 'system' | 'dark' | 'light'; panel: 'none' | 'bookmarks' | 'history' | 'privacy' | 'storage' | 'workspaces' | 'commands';
 }
 export type Command =
   | { type: 'navigate'; url: string }
   | { type: 'new-tab'; url?: string }
-  | { type: 'activate-tab' | 'close-tab'; id: string }
+  | { type: 'activate-tab' | 'close-tab' | 'split-tab'; id: string }
   | { type: 'move-tab'; id: string; index: number }
-  | { type: 'back' | 'forward' | 'reload' | 'stop' | 'bookmark' | 'clear-history' | 'toggle-sidebar' }
+  | { type: 'back' | 'forward' | 'reload' | 'stop' | 'bookmark' | 'clear-history' | 'toggle-sidebar' | 'toggle-split' }
   | { type: 'remove-bookmark'; id: string }
   | { type: 'unlock-vault'; passphrase: string }
   | { type: 'background-limit'; value: number }

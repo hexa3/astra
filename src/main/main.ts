@@ -12,7 +12,7 @@ import { isWebURL, resolveAddress } from '../shared/navigation';
 import { validateCommand } from '../shared/commands';
 import { DEFAULT_WORKSPACE, restoreWorkspaces, workspacePartition } from '../shared/workspaces';
 import { moveTab } from '../shared/tab-order';
-import { pageBounds } from '../shared/layout';
+import { pageBounds, splitBounds } from '../shared/layout';
 import type { BrowserState, Command, Entry, Tab } from '../shared/types';
 
 app.setName('Astra');
@@ -40,6 +40,7 @@ const preparedSessions = new Set<string>();
 const chromeURL = pathToFileURL(join(__dirname, '../renderer/index.html')).href;
 const active = () => state.tabs.find(tab => tab.id === state.activeId);
 const contents = () => views.get(state.activeId)?.webContents;
+const splitContains = (id: string) => state.split?.leftId === id || state.split?.rightId === id;
 
 function pageSession(workspaceId: string): Electron.Session {
   const partition = workspacePartition(workspaceId);
@@ -72,9 +73,12 @@ function persist(): void {
 function layout(): void {
   if (!win || win.isDestroyed()) return;
   const [width, height] = win.getContentSize();
+  const bounds = pageBounds(width, height, state.sidebarCollapsed);
+  const [left, right] = splitBounds(bounds);
   for (const [id, view] of views) {
-    view.setVisible(id === state.activeId && state.panel === 'none' && !!active()?.url && !active()?.error);
-    view.setBounds(pageBounds(width, height, state.sidebarCollapsed));
+    const tab = state.tabs.find(tab => tab.id === id);
+    view.setVisible((state.split ? splitContains(id) : id === state.activeId) && state.panel === 'none' && !!tab?.url && !tab?.error);
+    view.setBounds(state.split ? id === state.split.leftId ? left : right : bounds);
   }
 }
 function shortcut(name: string): void {
@@ -88,6 +92,9 @@ function bindKeys(wc: WebContents): void {
     let action: (() => void) | undefined;
     if (mod && key === 'l') action = () => shortcut('address');
     if (mod && key === 'b') action = () => { void dispatch({ type: 'toggle-sidebar' }); };
+    if (mod && input.shift && key === 's') action = () => {
+      if (state.split || active()?.url && !active()?.error && state.tabs.some(tab => tab.id !== state.activeId && tab.workspaceId === state.activeWorkspaceId && tab.url && !tab.error)) void dispatch({ type: 'toggle-split' });
+    };
     if (mod && key === 'k') action = () => {
       state.panel = state.panel === 'commands' ? 'none' : 'commands';
       layout(); publish(); win.webContents.focus();
@@ -123,6 +130,7 @@ function createView(tab: Tab): WebContentsView {
   views.set(tab.id, view);
   win.contentView.addChildView(view);
   const wc = view.webContents;
+  wc.on('focus', () => { if (splitContains(tab.id) && state.activeId !== tab.id) activateTab(tab.id); });
   installNavigationConfirmation(wc, win, () => hibernator.isSuspending(tab.id));
   bindKeys(wc);
   wc.setWindowOpenHandler(({ url }) => {
@@ -160,12 +168,14 @@ function createView(tab: Tab): WebContentsView {
   });
   wc.on('did-fail-load', (_event, code, description, url, mainFrame) => {
     if (mainFrame && code !== -3) {
+      if (splitContains(tab.id)) state.split = undefined;
       if (isWebURL(url)) tab.url = url;
       tab.error = `${description} (${code})`; tab.loading = false; layout(); publish();
     }
   });
   wc.on('render-process-gone', (_event, details) => {
     if (quitting) return;
+    if (splitContains(tab.id)) state.split = undefined;
     tab.error = `The page process stopped: ${details.reason}. Reload to try again.`;
     tab.loading = false; layout(); publish();
   });
@@ -181,6 +191,7 @@ function createView(tab: Tab): WebContentsView {
   return view;
 }
 function newTab(url = '', title = 'New tab'): void {
+  state.split = undefined;
   const tab = createTab(url, title, state.activeWorkspaceId);
   state.tabs.push(tab); state.activeId = tab.id; state.panel = 'none';
   const workspace = state.workspaces.find(workspace => workspace.id === state.activeWorkspaceId);
@@ -191,6 +202,7 @@ function newTab(url = '', title = 'New tab'): void {
 }
 function activateTab(id: string): void {
   if (!state.tabs.some(tab => tab.id === id)) return;
+  if (state.split && !splitContains(id)) state.split = undefined;
   state.activeId = id; state.panel = 'none';
   const tab = active()!;
   state.activeWorkspaceId = tab.workspaceId ?? DEFAULT_WORKSPACE.id;
@@ -200,6 +212,13 @@ function activateTab(id: string): void {
   if (tab.url && !views.has(id)) void hibernator.restore(tab, createView(tab)).catch(() => {});
   layout(); publish(); contents()?.focus();
   hibernator.schedule();
+}
+function enterSplit(id: string): void {
+  const current = active(), partner = state.tabs.find(tab => tab.id === id);
+  if (!current?.url || !partner?.url || current.id === id || current.workspaceId !== partner.workspaceId || current.error || partner.error) throw new Error('Split view needs two loaded pages in the same workspace.');
+  state.split = { leftId: current.id, rightId: id }; state.panel = 'none';
+  if (!views.has(id)) void hibernator.restore(partner, createView(partner)).catch(() => {});
+  layout(); publish(); contents()?.focus(); hibernator.schedule();
 }
 function switchWorkspace(id: string): void {
   const workspace = state.workspaces.find(workspace => workspace.id === id);
@@ -224,6 +243,7 @@ async function closeTab(id: string): Promise<void> {
   index = state.tabs.findIndex(tab => tab.id === id);
   if (index < 0) return;
   state.tabs.splice(index, 1);
+  if (splitContains(id)) state.split = undefined;
   hibernator.forget(id);
   if (id === state.activeId) {
     const remaining = state.tabs.filter(tab => tab.workspaceId === state.activeWorkspaceId);
@@ -288,6 +308,16 @@ async function dispatch(command: Command): Promise<void> {
     case 'switch-workspace': switchWorkspace(command.id); break;
     case 'activate-tab': activateTab(command.id); break;
     case 'move-tab': state.tabs = moveTab(state.tabs, command.id, command.index); persist(); break;
+    case 'split-tab': enterSplit(command.id); break;
+    case 'toggle-split': {
+      if (state.split) { state.split = undefined; layout(); contents()?.focus(); }
+      else {
+        const partner = state.tabs.find(tab => tab.id !== state.activeId && tab.workspaceId === state.activeWorkspaceId && tab.url && !tab.error);
+        if (!partner) throw new Error('Open a second page in this workspace to use split view.');
+        enterSplit(partner.id);
+      }
+      break;
+    }
     case 'close-tab': await closeTab(command.id); break;
     case 'back': if (wc?.navigationHistory.canGoBack()) wc.navigationHistory.goBack(); break;
     case 'forward': if (wc?.navigationHistory.canGoForward()) wc.navigationHistory.goForward(); break;
@@ -324,7 +354,7 @@ app.whenReady().then(async () => {
   hibernator = new Hibernator(() => state, views, view => { if (!win.isDestroyed()) win.contentView.removeChildView(view); }, () => {
     if (!quitting && active()?.suspended && !views.has(state.activeId)) activateTab(state.activeId);
     layout(); publish();
-  }, id => closingWindow || closingTabs.has(id));
+  }, id => closingWindow || closingTabs.has(id) || splitContains(id));
   metricsTimer = setInterval(() => {
     const metrics = new Map(app.getAppMetrics().map(metric => [metric.pid, metric]));
     for (const tab of state.tabs) {
