@@ -3,6 +3,7 @@
   import type { BrowserState, Command } from '../shared/types';
   import Icon from './Icon.svelte';
   import PrivacyPanel from './PrivacyPanel.svelte';
+  import WorkspacePanel from './WorkspacePanel.svelte';
   let state: BrowserState | undefined;
   let address = '';
   let search = '';
@@ -15,6 +16,7 @@
   let confirmPassphrase = '';
   let unlocking = false;
   $: tab = state?.tabs.find(item => item.id === state?.activeId);
+  $: workspaceTabs = state?.tabs.filter(item => item.workspaceId === state?.activeWorkspaceId) ?? [];
   $: bookmarked = state?.bookmarks.some(item => item.url === tab?.url) ?? false;
   $: entries = (state?.panel === 'history' ? state.history : state?.bookmarks ?? []).filter(item => `${item.title} ${item.url}`.toLowerCase().includes(search.toLowerCase()));
   async function run(command: Command) {
@@ -67,9 +69,11 @@
   </nav>
 
   <aside class="sidebar" aria-label="Tabs and library">
-    <div class="section-label"><span>YOUR TABS</span><span>{String(state?.tabs.length ?? 0).padStart(2, '0')}</span></div>
+    <label class="section-label" for="workspace-switch">WORKSPACE</label>
+    <div class="workspace-switch"><select id="workspace-switch" aria-label="Workspace" value={state?.activeWorkspaceId} onchange={event => run({ type: 'switch-workspace', id: event.currentTarget.value })}>{#each state?.workspaces ?? [] as workspace (workspace.id)}<option value={workspace.id}>{workspace.name}</option>{/each}</select><button aria-label="Manage workspaces" title="Create or rename a workspace" onclick={() => run({ type: 'panel', value: 'workspaces' })}><Icon name="plus" /></button></div>
+    <div class="section-label"><span>YOUR TABS</span><span>{String(workspaceTabs.length).padStart(2, '0')}</span></div>
     <div class="tabs" role="tablist" aria-label="Open tabs" aria-orientation="vertical">
-      {#each state?.tabs ?? [] as item (item.id)}
+      {#each workspaceTabs as item (item.id)}
         <div class:active={item.id === state?.activeId} class="tab-row">
           <button class="tab" role="tab" aria-selected={item.id === state?.activeId} title={`${item.url || 'New tab'}${item.suspended ? ' · Sleeping; select to restore' : item.suspensionReason ? ` · Kept awake: ${item.suspensionReason}` : ''}`} onclick={() => run({ type: 'activate-tab', id: item.id })}>
             <span class:loading={item.loading} class="tab-symbol" aria-hidden="true">{item.url ? '◌' : '+'}</span>
@@ -92,7 +96,9 @@
 
   <main class="canvas" id="main-content">
     {#if error}<div class="error" role="alert">{error}<button aria-label="Dismiss error" onclick={() => error = ''}><Icon name="close" /></button></div>{/if}
-    {#if state?.panel === 'storage'}
+    {#if state?.panel === 'workspaces'}
+      <WorkspacePanel {state} {run} />
+    {:else if state?.panel === 'storage'}
       <section class="panel">
         <div class="eyebrow">LOCAL MEANS YOURS</div>
         <div class="panel-title"><h1>{state.storage === 'encrypted' ? 'Records secured.' : state.vaultLocked ? 'Unlock your vault.' : 'Keep it private.'}</h1><button aria-label="Close storage settings" onclick={() => run({ type: 'panel', value: 'none' })}><Icon name="close" /></button></div>

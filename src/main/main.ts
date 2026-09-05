@@ -90,11 +90,17 @@ function bindKeys(wc: WebContents): void {
     if (mod && key === 'd') action = toggleBookmark;
     if (mod && key === 'h') action = () => { state.panel = 'history'; layout(); publish(); };
     if (mod && key === 'tab') action = () => {
-      const index = state.tabs.findIndex(tab => tab.id === state.activeId);
-      activateTab(state.tabs[(index + (input.shift ? -1 : 1) + state.tabs.length) % state.tabs.length].id);
+      const tabs = state.tabs.filter(tab => tab.workspaceId === state.activeWorkspaceId);
+      const index = tabs.findIndex(tab => tab.id === state.activeId);
+      if (tabs.length) activateTab(tabs[(index + (input.shift ? -1 : 1) + tabs.length) % tabs.length].id);
     };
-    if (input.alt && key === 'arrowleft') action = () => { if (contents()?.navigationHistory.canGoBack()) contents()?.navigationHistory.goBack(); };
-    if (input.alt && key === 'arrowright') action = () => { if (contents()?.navigationHistory.canGoForward()) contents()?.navigationHistory.goForward(); };
+    if (mod && input.alt && ['arrowleft', 'arrowright'].includes(key)) action = () => {
+      const index = state.workspaces.findIndex(workspace => workspace.id === state.activeWorkspaceId);
+      switchWorkspace(state.workspaces[(index + (key === 'arrowleft' ? -1 : 1) + state.workspaces.length) % state.workspaces.length].id);
+    };
+    if (mod && input.alt && /^[1-9]$/.test(key) && state.workspaces[Number(key) - 1]) action = () => switchWorkspace(state.workspaces[Number(key) - 1].id);
+    if (input.alt && !mod && key === 'arrowleft') action = () => { if (contents()?.navigationHistory.canGoBack()) contents()?.navigationHistory.goBack(); };
+    if (input.alt && !mod && key === 'arrowright') action = () => { if (contents()?.navigationHistory.canGoForward()) contents()?.navigationHistory.goForward(); };
     if (key === 'escape' && state.panel !== 'none') action = () => { state.panel = 'none'; layout(); publish(); };
     if (action) { event.preventDefault(); action(); }
   });
