@@ -17,8 +17,9 @@
     "start": "npm run build && electron .",
     "test": "tsx --test tests/*.test.ts",
     "test:e2e": "playwright test",
+    "test:native": "node scripts/test-native.mjs",
     "test:live": "node scripts/smoke-live.mjs",
-    "verify": "npm run check && npm test && npm run build && npm run test:e2e",
+    "verify": "npm run check && npm test && npm run build && npm run test:e2e && npm run test:native",
     "package:linux": "npm run build && electron-builder --linux AppImage deb",
     "package:dir": "npm run build && electron-builder --dir",
     "postinstall": "electron-builder install-app-deps"
