@@ -23,6 +23,9 @@ Node.js 24 and a graphical desktop are required. Run `npm ci`, then `npm start`.
 Use `npm run verify` to typecheck, run unit tests, build and exercise the app.
 Linux packages: `npm run package:linux`.
 
+[Keyboard controls](docs/keyboard.md) document the current source build,
+including features newer than the downloadable first alpha.
+
 On Arch Linux, electron-builder's bundled Debian packager may require
 `libcrypt.so.1`. You can use your installed Ruby instead: install FPM with
 `gem install --user-install fpm --no-document`, then set `CUSTOM_FPM_PATH` to
