@@ -19,6 +19,7 @@ let win: BrowserWindow;
 let vault: Vault;
 let state: BrowserState;
 let quitting = false;
+let unlockingVault = false;
 let publishTimer: ReturnType<typeof setTimeout> | undefined;
 const views = new Map<string, WebContentsView>();
 const chromeURL = pathToFileURL(join(__dirname, '../renderer/index.html')).href;
@@ -173,12 +174,26 @@ function validate(raw: unknown): Command {
   if (command.type === 'new-tab' && (command.url === undefined || typeof command.url === 'string' && command.url.length <= 8192)) return raw as Command;
   if (['activate-tab', 'close-tab', 'remove-bookmark'].includes(command.type) && typeof command.id === 'string' && command.id.length <= 100) return raw as Command;
   if (command.type === 'theme' && ['system', 'dark', 'light'].includes(String(command.value))) return raw as Command;
-  if (command.type === 'panel' && ['none', 'bookmarks', 'history', 'privacy'].includes(String(command.value))) return raw as Command;
+  if (command.type === 'unlock-vault' && typeof command.passphrase === 'string' && command.passphrase.length >= 12 && command.passphrase.length <= 1024) return raw as Command;
+  if (command.type === 'panel' && ['none', 'bookmarks', 'history', 'privacy', 'storage'].includes(String(command.value))) return raw as Command;
   throw new Error('Unsupported browser command.');
 }
 async function dispatch(command: Command): Promise<void> {
   const wc = contents();
   switch (command.type) {
+    case 'unlock-vault': {
+      if (unlockingVault) throw new Error('A vault unlock is already in progress.');
+      unlockingVault = true;
+      try { await vault.unlock(command.passphrase); } finally { unlockingVault = false; }
+      const merge = (saved: Entry[], current: Entry[]) => [...new Map([...saved, ...current].map(entry => [entry.id, entry])).values()].sort((a, b) => b.time - a.time);
+      state.bookmarks = merge(vault.get<Entry[]>('bookmarks', []), state.bookmarks);
+      state.history = merge(vault.get<Entry[]>('history', []), state.history).slice(0, 2000);
+      for (const item of vault.get<{url: string; title: string}[]>('session', []).slice(0, 50)) {
+        if (isWebURL(item.url) && !state.tabs.some(tab => tab.url === item.url)) state.tabs.push({ id: randomUUID(), url: item.url, title: item.title, loading: false, canBack: false, canForward: false, requests: 0, blocked: 0, cookiesBlocked: 0 });
+      }
+      state.storage = vault.mode; state.storageMessage = vault.message; state.vaultLocked = vault.locked;
+      persist(); break;
+    }
     case 'navigate': {
       const tab = active(); if (!tab) return;
       const url = resolveAddress(command.url);
@@ -206,7 +221,7 @@ async function dispatch(command: Command): Promise<void> {
 }
 app.whenReady().then(async () => {
   vault = new Vault(join(app.getPath('userData'), 'vault'));
-  state = { tabs: [], activeId: '', bookmarks: vault.get<Entry[]>('bookmarks', []), history: vault.get<Entry[]>('history', []), storage: vault.mode, storageMessage: vault.message, theme: vault.get('theme', 'system'), panel: 'none' };
+  state = { tabs: [], activeId: '', bookmarks: vault.get<Entry[]>('bookmarks', []), history: vault.get<Entry[]>('history', []), storage: vault.mode, storageMessage: vault.message, vaultLocked: vault.locked, theme: vault.get('theme', 'system'), panel: 'none' };
   nativeTheme.themeSource = state.theme;
   win = new BrowserWindow({ width: 1280, height: 840, minWidth: 760, minHeight: 520, title: 'Astra', backgroundColor: '#000000', show: false, autoHideMenuBar: true,
     webPreferences: { preload: join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true, spellcheck: false, webviewTag: false, partition: 'astra-chrome' },

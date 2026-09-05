@@ -6,8 +6,8 @@ export interface Tab {
 export interface Entry { id: string; url: string; title: string; time: number }
 export interface BrowserState {
   tabs: Tab[]; activeId: string; bookmarks: Entry[]; history: Entry[];
-  storage: 'encrypted' | 'memory'; storageMessage: string;
-  theme: 'system' | 'dark' | 'light'; panel: 'none' | 'bookmarks' | 'history' | 'privacy';
+  storage: 'encrypted' | 'memory'; storageMessage: string; vaultLocked: boolean;
+  theme: 'system' | 'dark' | 'light'; panel: 'none' | 'bookmarks' | 'history' | 'privacy' | 'storage';
 }
 export type Command =
   | { type: 'navigate'; url: string }
@@ -15,6 +15,7 @@ export type Command =
   | { type: 'activate-tab' | 'close-tab'; id: string }
   | { type: 'back' | 'forward' | 'reload' | 'stop' | 'bookmark' | 'clear-history' }
   | { type: 'remove-bookmark'; id: string }
+  | { type: 'unlock-vault'; passphrase: string }
   | { type: 'theme'; value: BrowserState['theme'] }
   | { type: 'panel'; value: BrowserState['panel'] };
 export interface AstraAPI {

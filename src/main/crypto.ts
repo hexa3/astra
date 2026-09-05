@@ -1,4 +1,8 @@
-import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
+import { createCipheriv, createDecipheriv, randomBytes, scrypt } from 'node:crypto';
+
+export function deriveKey(passphrase: string, salt: Buffer): Promise<Buffer> {
+  return new Promise((resolve, reject) => scrypt(passphrase, salt, 32, { N: 32768, r: 8, p: 1, maxmem: 64 * 1024 * 1024 }, (error, key) => error ? reject(error) : resolve(key)));
+}
 
 export function seal(key: Buffer, text: string, context: string): Buffer {
   const iv = randomBytes(12);

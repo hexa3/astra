@@ -17,8 +17,10 @@ Linux packages: `npm run package:linux`.
 
 No telemetry, analytics SDK, remote font, cloud sync or automatic update request.
 History, bookmarks and session records must be encrypted before persistence.
-Without a secure OS key store, the first build uses clearly disclosed memory-only
-storage. Website storage is ephemeral: logins do not currently survive quitting.
+Without a secure OS key store, Astra starts in clearly disclosed memory-only
+mode. Click the storage status at the bottom to create or unlock a passphrase
+vault. Use a unique passphrase of at least 12 characters; there is no recovery
+service. Website storage is ephemeral: logins do not currently survive quitting.
 Basic tracker blocking and third-party network-cookie filtering are enabled.
 This is not an anonymity tool; navigating to a site contacts that site.
 

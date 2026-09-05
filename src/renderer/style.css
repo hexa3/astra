@@ -1,4 +1,5 @@
 @charset "UTF-8";
+.vault-form{max-width:420px;margin-top:28px}.vault-form label{display:block;font-size:12px;margin:18px 0}.vault-form input{display:block;width:100%;border:1px solid var(--line);padding:12px;margin-top:8px;border-radius:3px}.storage-explanation{font-size:13px;line-height:1.8;margin-top:24px;max-width:580px}.status button.status-storage{font:inherit;min-height:20px;padding:0 5px}
 :root{font-family:Arial,Helvetica,sans-serif;color-scheme:dark;--bg:#000;--fg:#fff;--surface:#0c0c0c;--hover:#1a1a1a;--line:#292929;--muted:#969696;--accent:#e5231b;font-synthesis:none;color:var(--fg);background:var(--bg)}
 :root[data-theme=light]{color-scheme:light;--bg:#fff;--fg:#000;--surface:#f7f7f7;--hover:#ededed;--line:#d8d8d8;--muted:#636363}
 @media(prefers-color-scheme:light){:root:not([data-theme=dark]){color-scheme:light;--bg:#fff;--fg:#000;--surface:#f7f7f7;--hover:#ededed;--line:#d8d8d8;--muted:#636363}}

@@ -10,12 +10,22 @@
   let addressFocused = false;
   let previousId = '';
   let previousUrl = '';
+  let passphrase = '';
+  let confirmPassphrase = '';
+  let unlocking = false;
   $: tab = state?.tabs.find(item => item.id === state?.activeId);
   $: bookmarked = state?.bookmarks.some(item => item.url === tab?.url) ?? false;
   $: entries = (state?.panel === 'history' ? state.history : state?.bookmarks ?? []).filter(item => `${item.title} ${item.url}`.toLowerCase().includes(search.toLowerCase()));
   async function run(command: Command) {
     error = '';
-    try { await window.astra.command(command); } catch (cause) { error = String(cause).replace(/^Error:.*?Error: /, ''); }
+    try { await window.astra.command(command); return true; } catch (cause) { error = String(cause).replace(/^Error:.*?Error: /, ''); return false; }
+  }
+  async function unlockVault(event: SubmitEvent) {
+    event.preventDefault();
+    if (!state?.vaultLocked && passphrase !== confirmPassphrase) { error = 'Passphrases do not match.'; return; }
+    unlocking = true;
+    await run({ type: 'unlock-vault', passphrase });
+    passphrase = ''; confirmPassphrase = ''; unlocking = false;
   }
   function receive(next: BrowserState) {
     state = next;
@@ -80,7 +90,22 @@
 
   <main class="canvas" id="main-content">
     {#if error}<div class="error" role="alert">{error}<button aria-label="Dismiss error" onclick={() => error = ''}><Icon name="close" /></button></div>{/if}
-    {#if state?.panel === 'bookmarks' || state?.panel === 'history'}
+    {#if state?.panel === 'storage'}
+      <section class="panel">
+        <div class="eyebrow">LOCAL MEANS YOURS</div>
+        <div class="panel-title"><h1>{state.storage === 'encrypted' ? 'Records secured.' : state.vaultLocked ? 'Unlock your vault.' : 'Keep it private.'}</h1><button aria-label="Close storage settings" onclick={() => run({ type: 'panel', value: 'none' })}><Icon name="close" /></button></div>
+        <p class="muted">{state.storageMessage}</p>
+        {#if state.storage !== 'encrypted'}
+          <p class="storage-explanation">{state.vaultLocked ? 'Your saved history, bookmarks and tabs stay encrypted until you unlock them.' : 'Create a passphrase to save history, bookmarks and tabs on this device. Astra cannot recover a forgotten passphrase. Use a unique phrase of at least 12 characters.'}</p>
+          <form class="vault-form" onsubmit={unlockVault}>
+            <label>Passphrase<input aria-label="Vault passphrase" type="password" bind:value={passphrase} minlength="12" maxlength="1024" autocomplete={state.vaultLocked ? 'current-password' : 'new-password'} required /></label>
+            {#if !state.vaultLocked}<label>Repeat passphrase<input aria-label="Repeat vault passphrase" type="password" bind:value={confirmPassphrase} minlength="12" maxlength="1024" autocomplete="new-password" required /></label>{/if}
+            <button class="primary-action" type="submit" disabled={unlocking}>{unlocking ? 'Unlocking…' : state.vaultLocked ? 'Unlock records' : 'Create encrypted vault'}<Icon name="shield" /></button>
+          </form>
+        {/if}
+        <p class="storage-explanation muted">Website cookies and logins are held in memory and cleared when Astra quits. Downloads you explicitly save are ordinary files at your chosen location.</p>
+      </section>
+    {:else if state?.panel === 'bookmarks' || state?.panel === 'history'}
       <section class="panel">
         <div class="eyebrow">YOUR BROWSER / YOUR RECORDS</div>
         <div class="panel-title"><h1>{state.panel === 'bookmarks' ? 'Bookmarks' : 'History'}</h1><button aria-label="Close library" onclick={() => run({ type: 'panel', value: 'none' })}><Icon name="close" /></button></div>
@@ -113,5 +138,5 @@
       </section>
     {/if}
   </main>
-  <footer class="status"><span class="status-dot" aria-hidden="true"></span><span>{tab?.loading ? 'LOADING' : 'READY'}</span><span class="status-storage">{state?.storage === 'encrypted' ? 'ENCRYPTED RECORDS' : 'MEMORY ONLY · RECORDS WILL NOT BE SAVED'}</span><span>{tab?.blocked ?? 0} TRACKERS BLOCKED</span></footer>
+  <footer class="status"><span class="status-dot" aria-hidden="true"></span><span>{tab?.loading ? 'LOADING' : 'READY'}</span><button class="status-storage" aria-label="Encrypted storage settings" onclick={() => run({ type: 'panel', value: 'storage' })}>{state?.storage === 'encrypted' ? 'ENCRYPTED RECORDS' : state?.vaultLocked ? 'VAULT LOCKED · UNLOCK RECORDS' : 'MEMORY ONLY · SET UP ENCRYPTED STORAGE'}</button><span>{tab?.blocked ?? 0} TRACKERS BLOCKED</span></footer>
 </div>
