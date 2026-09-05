@@ -8,6 +8,7 @@ import { installPrivacy } from './privacy';
 import { Hibernator } from './hibernation';
 import { requestPageClose } from './lifecycle';
 import { isWebURL, resolveAddress } from '../shared/navigation';
+import { validateCommand } from '../shared/commands';
 import type { BrowserState, Command, Entry, Tab } from '../shared/types';
 
 app.setName('Astra');
@@ -188,21 +189,6 @@ function toggleBookmark(): void {
 function authorize(event: IpcMainInvokeEvent): void {
   if (!win || event.sender !== win.webContents || event.senderFrame !== win.webContents.mainFrame || event.senderFrame.url !== chromeURL) throw new Error('Untrusted browser command.');
 }
-function validate(raw: unknown): Command {
-  if (!raw || typeof raw !== 'object') throw new Error('Invalid command.');
-  const command = raw as Record<string, unknown>;
-  if (typeof command.type !== 'string') throw new Error('Invalid command.');
-  const simple = ['back', 'forward', 'reload', 'stop', 'bookmark', 'clear-history'];
-  if (simple.includes(command.type)) return raw as Command;
-  if (command.type === 'navigate' && typeof command.url === 'string' && command.url.length <= 8192) return raw as Command;
-  if (command.type === 'new-tab' && (command.url === undefined || typeof command.url === 'string' && command.url.length <= 8192)) return raw as Command;
-  if (['activate-tab', 'close-tab', 'remove-bookmark'].includes(command.type) && typeof command.id === 'string' && command.id.length <= 100) return raw as Command;
-  if (command.type === 'theme' && ['system', 'dark', 'light'].includes(String(command.value))) return raw as Command;
-  if (command.type === 'unlock-vault' && typeof command.passphrase === 'string' && command.passphrase.length >= 12 && command.passphrase.length <= 1024) return raw as Command;
-  if (command.type === 'background-limit' && Number.isInteger(command.value) && Number(command.value) >= 0 && Number(command.value) <= 32) return raw as Command;
-  if (command.type === 'panel' && ['none', 'bookmarks', 'history', 'privacy', 'storage'].includes(String(command.value))) return raw as Command;
-  throw new Error('Unsupported browser command.');
-}
 async function dispatch(command: Command): Promise<void> {
   const wc = contents();
   switch (command.type) {
@@ -274,7 +260,7 @@ app.whenReady().then(async () => {
   bindKeys(win.webContents);
   installPrivacy(session.fromPartition('astra-pages', { cache: false }), id => state.tabs.find(tab => views.get(tab.id)?.webContents?.id === id), schedulePublish);
   ipcMain.handle('astra:snapshot', event => { authorize(event); return state; });
-  ipcMain.handle('astra:command', async (event, command) => { authorize(event); await dispatch(validate(command)); });
+  ipcMain.handle('astra:command', async (event, command) => { authorize(event); await dispatch(validateCommand(command)); });
   win.on('resize', layout);
   win.on('close', event => {
     if (quitting) return;
