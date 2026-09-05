@@ -205,3 +205,37 @@ test('workspaces isolate cookies and switch their visible tabs by keyboard', asy
     await expect(chrome.getByRole('option', { name: 'Research', exact: true })).toHaveCount(1);
   } finally { await app.close(); }
 });
+
+test('encrypted restart restores named workspaces and their lazy tabs', async () => {
+  const profile = mkdtempSync(join(tmpdir(), 'astra-workspace-vault-'));
+  const launch = () => electron.launch({ args: ['.', '--password-store=basic'], env: { ...process.env, ASTRA_TEST_PROFILE: profile } });
+  let app = await launch();
+  try {
+    let chrome = await app.firstWindow();
+    await chrome.getByRole('button', { name: 'Manage workspaces' }).click();
+    await chrome.getByLabel('New workspace name').fill('Private research');
+    await chrome.getByRole('button', { name: 'Create workspace', exact: true }).click();
+    await chrome.getByRole('textbox', { name: 'Address or search' }).fill(`${origin}/second`);
+    await chrome.getByRole('textbox', { name: 'Address or search' }).press('Enter');
+    await expect(chrome.getByRole('tab', { name: 'Second page' })).toBeVisible();
+    await chrome.getByRole('button', { name: 'Encrypted storage settings' }).click();
+    await chrome.getByRole('textbox', { name: 'Vault passphrase', exact: true }).fill('workspace test secret phrase');
+    await chrome.getByRole('textbox', { name: 'Repeat vault passphrase' }).fill('workspace test secret phrase');
+    await chrome.getByRole('button', { name: 'Create encrypted vault' }).click();
+    await expect(chrome.getByRole('heading', { name: 'Records secured.' })).toBeVisible();
+    await app.close();
+    for (const filename of readdirSync(join(profile, 'vault'))) expect(readFileSync(join(profile, 'vault', filename)).includes(Buffer.from('Private research'))).toBe(false);
+    app = await launch(); chrome = await app.firstWindow();
+    await chrome.getByRole('button', { name: 'Encrypted storage settings' }).click();
+    await chrome.getByRole('textbox', { name: 'Vault passphrase', exact: true }).fill('workspace test secret phrase');
+    await chrome.getByRole('button', { name: 'Unlock records' }).click();
+    await expect(chrome.getByRole('heading', { name: 'Records secured.' })).toBeVisible();
+    const snapshot = await chrome.evaluate(() => window.astra.snapshot());
+    const workspace = snapshot.workspaces.find(workspace => workspace.name === 'Private research')!;
+    const saved = snapshot.tabs.find(tab => tab.url === `${origin}/second`)!;
+    expect(saved.workspaceId).toBe(workspace.id); expect(saved.suspended).toBe(true);
+    await chrome.getByRole('combobox', { name: 'Workspace', exact: true }).selectOption(workspace.id);
+    await expect(chrome.getByRole('tab', { name: 'Second page', exact: false })).toBeVisible();
+    await expect.poll(async () => app.evaluate(({ webContents }, url) => webContents.getAllWebContents().some(contents => contents.getURL() === url), `${origin}/second`)).toBe(true);
+  } finally { await app.close(); }
+});
