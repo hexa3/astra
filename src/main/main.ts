@@ -3,6 +3,7 @@ import type { IpcMainInvokeEvent, WebContents } from 'electron';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { randomUUID } from 'node:crypto';
+import { mkdirSync } from 'node:fs';
 import { Vault } from './storage';
 import { installPrivacy } from './privacy';
 import { Hibernator } from './hibernation';
@@ -13,11 +14,13 @@ import { validateCommand } from '../shared/commands';
 import { DEFAULT_WORKSPACE, restoreWorkspaces, workspacePartition } from '../shared/workspaces';
 import { moveTab } from '../shared/tab-order';
 import { pageBounds, splitBounds } from '../shared/layout';
+import { profileArgument } from './profile';
 import type { BrowserState, Command, Entry, Tab } from '../shared/types';
 
 app.setName('Astra');
 const testProfile = !app.isPackaged ? process.env.ASTRA_TEST_PROFILE : undefined;
-if (testProfile) app.setPath('userData', testProfile);
+const chosenProfile = profileArgument(process.argv) ?? testProfile;
+if (chosenProfile) { mkdirSync(chosenProfile, { recursive: true, mode: 0o700 }); app.setPath('userData', chosenProfile); }
 const primaryInstance = app.requestSingleInstanceLock();
 if (!primaryInstance) app.quit();
 for (const flag of ['disable-background-networking', 'disable-component-update', 'disable-domain-reliability', 'disable-sync', 'disable-http-cache', 'no-pings', 'test-third-party-cookie-phaseout']) app.commandLine.appendSwitch(flag);
