@@ -118,8 +118,8 @@ function bindKeys(wc: WebContents): void {
       switchWorkspace(state.workspaces[(index + (key === 'arrowleft' ? -1 : 1) + state.workspaces.length) % state.workspaces.length].id);
     };
     if (mod && input.alt && /^[1-9]$/.test(key) && state.workspaces[Number(key) - 1]) action = () => switchWorkspace(state.workspaces[Number(key) - 1].id);
-    if (input.alt && !mod && key === 'arrowleft') action = () => { if (contents()?.navigationHistory.canGoBack()) contents()?.navigationHistory.goBack(); };
-    if (input.alt && !mod && key === 'arrowright') action = () => { if (contents()?.navigationHistory.canGoForward()) contents()?.navigationHistory.goForward(); };
+    if (input.alt && !mod && key === 'arrowleft') action = () => { if (!active()?.restoring && contents()?.navigationHistory.canGoBack()) contents()?.navigationHistory.goBack(); };
+    if (input.alt && !mod && key === 'arrowright') action = () => { if (!active()?.restoring && contents()?.navigationHistory.canGoForward()) contents()?.navigationHistory.goForward(); };
     if (key === 'escape' && state.panel !== 'none') action = () => { state.panel = 'none'; layout(); publish(); contents()?.focus(); };
     if (action) { event.preventDefault(); action(); }
   });
@@ -145,8 +145,8 @@ function createView(tab: Tab): WebContentsView {
   wc.on('will-redirect', (event, url) => { if (!isWebURL(url)) event.preventDefault(); });
   const update = () => {
     if (wc.isDestroyed()) return;
-    tab.loading = wc.isLoading();
-    tab.canBack = wc.navigationHistory.canGoBack(); tab.canForward = wc.navigationHistory.canGoForward();
+    tab.loading = !!tab.restoring || wc.isLoading();
+    tab.canBack = !tab.restoring && wc.navigationHistory.canGoBack(); tab.canForward = !tab.restoring && wc.navigationHistory.canGoForward();
     publish();
   };
   wc.on('did-start-loading', update);
@@ -323,8 +323,8 @@ async function dispatch(command: Command): Promise<void> {
       break;
     }
     case 'close-tab': await closeTab(command.id); break;
-    case 'back': if (wc?.navigationHistory.canGoBack()) wc.navigationHistory.goBack(); break;
-    case 'forward': if (wc?.navigationHistory.canGoForward()) wc.navigationHistory.goForward(); break;
+    case 'back': if (!active()?.restoring && wc?.navigationHistory.canGoBack()) wc.navigationHistory.goBack(); break;
+    case 'forward': if (!active()?.restoring && wc?.navigationHistory.canGoForward()) wc.navigationHistory.goForward(); break;
     case 'reload': {
       const tab = active();
       if (tab?.error && tab.url) {

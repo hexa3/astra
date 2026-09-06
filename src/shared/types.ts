@@ -4,6 +4,7 @@ export interface Tab {
   canBack: boolean; canForward: boolean; error?: string;
   requests: number; blocked: number; cookiesBlocked: number;
   suspended?: boolean; suspensionReason?: string; lastActiveAt?: number;
+  restoring?: boolean;
   rendererMemoryMB?: number; rendererPid?: number;
 }
 export interface Entry { id: string; url: string; title: string; time: number }

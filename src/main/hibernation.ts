@@ -73,10 +73,21 @@ export class Hibernator {
   async restore(tab: Tab, view: WebContentsView): Promise<void> {
     const saved = this.sleeping.get(tab.id);
     this.sleeping.delete(tab.id); tab.suspended = false; tab.suspensionReason = undefined;
-    if (saved?.entries.length) {
-      await view.webContents.navigationHistory.restore({ entries: saved.entries, index: saved.index });
-      if (!view.webContents.isDestroyed()) await view.webContents.executeJavaScript(`scrollTo(${Math.round(saved.x)},${Math.round(saved.y)})`);
-    } else await view.webContents.loadURL(tab.url);
+    tab.restoring = true; tab.loading = true; tab.canBack = false; tab.canForward = false;
+    const contents = view.webContents;
+    try {
+      if (saved?.entries.length) {
+        await contents.navigationHistory.restore({ entries: saved.entries, index: saved.index });
+        if (!contents.isDestroyed()) await contents.executeJavaScript(`scrollTo(${Math.round(saved.x)},${Math.round(saved.y)})`);
+      } else await contents.loadURL(tab.url);
+    } finally {
+      tab.restoring = false;
+      if (!contents.isDestroyed()) {
+        tab.loading = contents.isLoading();
+        tab.canBack = contents.navigationHistory.canGoBack(); tab.canForward = contents.navigationHistory.canGoForward();
+      }
+      this.changed();
+    }
   }
   forget(id: string): void { this.sleeping.delete(id); }
   stop(): void { this.stopped = true; if (this.timer) clearTimeout(this.timer); }
