@@ -9,15 +9,14 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: native-packages-${{ github.ref }}
-  cancel-in-progress: false
-
 jobs:
   native:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 25
+    concurrency:
+      group: native-packages-${{ github.ref }}-${{ matrix.artifact }}
+      cancel-in-progress: false
     strategy:
       fail-fast: false
       matrix:
@@ -48,6 +47,8 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Verify source on the native desktop
+        env:
+          DEBUG: pw:browser
         run: npm run verify
       - name: Build native installable artifacts
         env:
