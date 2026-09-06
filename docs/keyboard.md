@@ -14,6 +14,7 @@ These shortcuts are handled by the browser even when a webpage has focus.
 | Bookmark / remove current bookmark | Cmd/Ctrl+D |
 | History | Cmd/Ctrl+H |
 | Collapse / expand sidebar | Cmd/Ctrl+B |
+| Toggle split view between two pages | Cmd/Ctrl+Shift+S |
 | Back / forward | Alt+Left / Alt+Right |
 | Previous / next workspace | Cmd/Ctrl+Alt+Left / Right |
 | Switch to workspace 1–9 | Cmd/Ctrl+Alt+1–9 |
@@ -32,6 +33,11 @@ result, never while typing.
 All workspace forms and library controls are reachable with Tab/Shift+Tab.
 The narrow sidebar retains named controls for screen readers and tooltips
 for icons; expand it for full tab titles.
+
+Split view needs two web pages in the same workspace. The numbered toolbar
+buttons focus the left/right page; navigation follows that focus. Search
+“Split with” in the command bar to choose a partner. Opening a new tab or
+selecting a tab outside the pair returns to a single page.
 
 Linux native shortcuts are covered by automated runtime tests. macOS and
 Windows runtime checks and an actual screen-reader audit are still pending.
