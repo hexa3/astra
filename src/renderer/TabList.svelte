@@ -7,6 +7,7 @@
   export let run: (command: Command) => Promise<boolean>;
   let list: HTMLDivElement;
   let draggedId = '';
+  let pointerSource = '';
   let dropId = '';
   let announcement = '';
   function focusTab(id: string) {
@@ -27,8 +28,14 @@
     else focusTab(tabs[next].id);
   }
   function dragStart(event: DragEvent, id: string) {
-    draggedId = id;
-    if (event.dataTransfer) { event.dataTransfer.setData('application/x-astra-tab', id); event.dataTransfer.effectAllowed = 'move'; }
+    // Native macOS drag dispatch can retarget dragstart to the next row.
+    // The original pointer press identifies the tab the user actually picked up.
+    draggedId = pointerSource || id;
+    if (event.dataTransfer) {
+      event.dataTransfer.setData('application/x-astra-tab', draggedId); event.dataTransfer.effectAllowed = 'move';
+      const source = list.querySelector<HTMLElement>(`[data-tab-id="${CSS.escape(draggedId)}"]`);
+      if (source) event.dataTransfer.setDragImage(source, source.clientWidth / 2, source.clientHeight / 2);
+    }
   }
   function dragOver(event: DragEvent, id: string) {
     if (!tabs.some(tab => tab.id === draggedId)) return;
@@ -37,7 +44,7 @@
   }
   async function drop(event: DragEvent, index: number) {
     event.preventDefault();
-    const id = draggedId; draggedId = ''; dropId = '';
+    const id = draggedId; draggedId = ''; dropId = ''; pointerSource = '';
     if (id && event.dataTransfer?.getData('application/x-astra-tab') === id) await move(id, index);
   }
 </script>
@@ -46,7 +53,7 @@
 <div class="tabs" bind:this={list} role="tablist" aria-label="Open tabs" aria-orientation="vertical" aria-describedby="tab-keyboard-help">
   {#each tabs as item, index (item.id)}
     <div class:active={item.id === activeId} class="tab-row">
-      <button class="tab" class:drop-target={dropId === item.id} role="tab" aria-label={`${item.title}${item.suspended ? ' (Sleeping)' : ''}`} data-tab-id={item.id} tabindex={item.id === activeId ? 0 : -1} aria-selected={item.id === activeId} title={`${item.title} · ${item.url || 'New tab'}${item.suspended ? ' · Sleeping; select to restore' : item.suspensionReason ? ` · Kept awake: ${item.suspensionReason}` : ''}`} onclick={() => run({ type: 'activate-tab', id: item.id })} onkeydown={event => keydown(event, index)} draggable="true" ondragstart={event => dragStart(event, item.id)} ondragover={event => dragOver(event, item.id)} ondrop={event => drop(event, index)} ondragend={() => { draggedId = ''; dropId = ''; }}>
+      <button class="tab" class:drop-target={dropId === item.id} role="tab" aria-label={`${item.title}${item.suspended ? ' (Sleeping)' : ''}`} data-tab-id={item.id} tabindex={item.id === activeId ? 0 : -1} aria-selected={item.id === activeId} title={`${item.title} · ${item.url || 'New tab'}${item.suspended ? ' · Sleeping; select to restore' : item.suspensionReason ? ` · Kept awake: ${item.suspensionReason}` : ''}`} onclick={() => run({ type: 'activate-tab', id: item.id })} onkeydown={event => keydown(event, index)} onpointerdown={event => { if (event.button === 0) pointerSource = item.id; }} onpointerup={() => { if (!draggedId) pointerSource = ''; }} draggable="true" ondragstart={event => dragStart(event, item.id)} ondragover={event => dragOver(event, item.id)} ondrop={event => drop(event, index)} ondragend={() => { draggedId = ''; dropId = ''; pointerSource = ''; }}>
         <span class="compact-index" aria-hidden="true">{index + 1}</span>
         <span class:loading={item.loading} class="tab-symbol" aria-hidden="true">{item.url ? '◌' : '+'}</span>
         <span class="tab-title">{item.title}</span>
