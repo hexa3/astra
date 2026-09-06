@@ -112,6 +112,7 @@ test('passphrase vault persists encrypted records and rejects a wrong key', asyn
 
 test('hibernation destroys page views, restores navigation and protects frame drafts', async () => {
   const app = await electron.launch({ args: ['.'], env: { ...process.env, ASTRA_TEST_PROFILE: mkdtempSync(join(tmpdir(), 'astra-sleep-test-')) } });
+  await app.context().tracing.start({ screenshots: true, snapshots: true });
   try {
     const chrome = await app.firstWindow();
     await chrome.getByRole('button', { name: 'Behind the page' }).click();
@@ -149,7 +150,10 @@ test('hibernation destroys page views, restores navigation and protects frame dr
       return page.executeJavaScript('document.querySelector("iframe").contentDocument.querySelector("input").value');
     }, `${origin}/embedded-form`)).toBe('Unsaved draft');
     await expect.poll(async () => (await chrome.evaluate(() => window.astra.snapshot())).tabs[0].rendererMemoryMB, { timeout: 10000 }).toBeGreaterThan(0);
-  } finally { await app.close(); }
+  } finally {
+    await app.context().tracing.stop({ path: test.info().outputPath('browser-trace.zip') });
+    await app.close();
+  }
 });
 
 test('a second process hands its URL to the existing profile', async () => {
@@ -354,6 +358,14 @@ test('tabs reorder by drag and keyboard and keep their encrypted saved order', a
   let app = await launch();
   try {
     let chrome = await app.firstWindow();
+    await chrome.evaluate(() => {
+      const records: unknown[] = [];
+      Reflect.set(window, '__dragEvents', records);
+      for (const type of ['pointerdown', 'dragstart', 'drop']) document.addEventListener(type, event => {
+        const tab = (event.target as Element).closest('[role="tab"]');
+        if (tab) records.push({ type, tab: tab.getAttribute('aria-label'), x: (event as MouseEvent).clientX, y: (event as MouseEvent).clientY });
+      }, true);
+    });
     for (const [index, path] of ['', '/second', '/form'].entries()) {
       if (index) await chrome.getByRole('button', { name: 'New tab', exact: true }).click();
       await chrome.getByRole('textbox', { name: 'Address or search' }).fill(`${origin}${path}`);
@@ -361,6 +373,7 @@ test('tabs reorder by drag and keyboard and keep their encrypted saved order', a
       await expect(chrome.getByRole('tab').nth(index)).toContainText(['Astra test page', 'Second page', 'Draft form'][index]);
     }
     await chrome.getByRole('tab', { name: 'Astra test page' }).dragTo(chrome.getByRole('tab', { name: 'Draft form' }));
+    console.log('Native tab drag events:', await chrome.evaluate(() => Reflect.get(window, '__dragEvents')));
     await expect(chrome.getByRole('tab')).toHaveText([/Second page/, /Draft form/, /Astra test page/]);
     await chrome.getByRole('tab', { name: 'Draft form' }).press('Alt+Shift+ArrowUp');
     await expect(chrome.getByRole('tab')).toHaveText([/Draft form/, /Second page/, /Astra test page/]);
