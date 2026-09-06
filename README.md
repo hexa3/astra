@@ -12,10 +12,10 @@ It is not yet a stable release. Verified milestones and limitations live in
 [the build log](docs/progress-log.md); architecture lives in
 [decisions](docs/decisions.md).
 
-[Download the Linux alpha](https://github.com/hexa3/astra/releases/tag/v0.1.0).
-It supports real browsing, vertical tabs, encrypted bookmarks/history, a
-passphrase vault, dark/light themes and a privacy panel with measured counts.
-See [release notes](docs/releases/v0.1.0.md) for verification and limitations.
+[Download the Linux alpha](https://github.com/hexa3/astra/releases/tag/v0.2.0).
+It supports real browsing, isolated workspaces, local command search, reordered
+tabs, a compact sidebar, encrypted records and conservative tab hibernation.
+See [release notes](docs/releases/v0.2.0.md) for verification and limitations.
 
 ## Development
 
