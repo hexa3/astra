@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import electron from 'electron';
 const directory = mkdtempSync(join(tmpdir(), 'astra-native-test-'));
 const executable = join(directory, 'lifecycle.cjs');
-await build({ entryPoints: ['tests/native/lifecycle.ts'], outfile: executable, bundle: true, platform: 'node', format: 'cjs', target: 'node24', external: ['electron'] });
+await build({ entryPoints: [process.argv[2] ?? 'tests/native/lifecycle.ts'], outfile: executable, bundle: true, platform: 'node', format: 'cjs', target: 'node24', external: ['electron'] });
 const child = spawn(electron, [executable], { env: { ...process.env, ASTRA_NATIVE_PROFILE: join(directory, 'profile') }, stdio: 'inherit' });
 const timer = setTimeout(() => { console.error('Native lifecycle test timed out'); child.kill('SIGKILL'); }, 30000);
 child.once('error', error => { clearTimeout(timer); console.error(error); process.exitCode = 1; });
