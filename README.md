@@ -23,6 +23,11 @@ Node.js 24 and a graphical desktop are required. Run `npm ci`, then `npm start`.
 Use `npm run verify` to typecheck, run unit tests, build and exercise the app.
 Linux packages: `npm run package:linux`.
 
+Current source also accepts `--astra-profile=/absolute/path` to run with a
+separate profile. Each profile has its own instance lock and encrypted vault;
+this option does not enable plaintext storage. Native Windows/macOS packaging
+is being verified in CI and is not yet a published platform-support claim.
+
 [Keyboard controls](docs/keyboard.md) document the current source build,
 including features newer than the downloadable first alpha.
 

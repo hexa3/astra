@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches: ['hour17-native-platforms']
+    paths: ['src/**', 'tests/**', 'scripts/**', 'package*.json', '.github/workflows/native.yml', 'vite.config.ts', 'tsconfig.json']
 
 permissions:
   contents: read
