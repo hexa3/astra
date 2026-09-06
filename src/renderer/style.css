@@ -357,6 +357,12 @@ p {
   gap: 8px;
   width: 202px;
 }
+.pane-focus {
+  font: 12px monospace;
+}
+.pane-focus[aria-pressed="true"] {
+  border-bottom: 1px solid var(--accent);
+}
 .address {
   height: 34px;
   display: flex;

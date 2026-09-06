@@ -19,6 +19,7 @@
   let unlocking = false;
   $: tab = state?.tabs.find(item => item.id === state?.activeId);
   $: workspaceTabs = state?.tabs.filter(item => item.workspaceId === state?.activeWorkspaceId) ?? [];
+  $: canSplit = !!tab?.url && !tab.error && workspaceTabs.some(item => item.id !== tab?.id && item.url && !item.error);
   $: bookmarked = state?.bookmarks.some(item => item.url === tab?.url) ?? false;
   $: entries = (state?.panel === 'history' ? state.history : state?.bookmarks ?? []).filter(item => `${item.title} ${item.url}`.toLowerCase().includes(search.toLowerCase()));
   async function run(command: Command) {
@@ -74,6 +75,11 @@
     </form>
     <button aria-label={bookmarked ? 'Remove bookmark' : 'Bookmark page'} aria-pressed={bookmarked} title="Bookmark · Ctrl+D" disabled={!tab?.url} onclick={() => run({ type: 'bookmark' })}><Icon name="bookmark" /></button>
     <button aria-label="Open command bar" title="Command bar · Ctrl/Cmd+K" onclick={() => run({ type: 'panel', value: 'commands' })}><Icon name="search" /><span class="key-hint">K</span></button>
+    {#if state?.split}
+      <button class="pane-focus" aria-label="Focus left page" aria-pressed={state.activeId === state.split.leftId} title="Focus left page" onclick={() => state?.split && run({ type: 'activate-tab', id: state.split.leftId })}>1</button>
+      <button class="pane-focus" aria-label="Focus right page" aria-pressed={state.activeId === state.split.rightId} title="Focus right page" onclick={() => state?.split && run({ type: 'activate-tab', id: state.split.rightId })}>2</button>
+    {/if}
+    <button aria-label={state?.split ? 'Exit split view' : 'Split view'} aria-pressed={!!state?.split} title={canSplit || state?.split ? 'Split view · Ctrl/Cmd+Shift+S' : 'Open two pages in this workspace to split'} disabled={!state?.split && !canSplit} onclick={() => run({ type: 'toggle-split' })}><Icon name="split" /></button>
   </nav>
 
   <aside class="sidebar" class:collapsed={state?.sidebarCollapsed} id="browser-sidebar" aria-label="Tabs and library">

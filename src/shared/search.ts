@@ -29,6 +29,8 @@ export function fuzzyScore(query: string, candidate: string): number {
 
 export function searchBrowser(state: BrowserState, query: string, limit = 30): SearchResult[] {
   const workspace = (id: string | undefined) => state.workspaces.find(workspace => workspace.id === id)?.name ?? 'Personal';
+  const active = state.tabs.find(tab => tab.id === state.activeId);
+  const partners = active?.url && !active.error ? state.tabs.filter(tab => tab.id !== active.id && tab.workspaceId === active.workspaceId && tab.url && !tab.error) : [];
   const candidates: SearchResult[] = [
     ...state.tabs.map(tab => ({ id: `tab:${tab.id}`, label: tab.title, detail: `${workspace(tab.workspaceId)} · ${tab.url || 'New tab'}`, kind: 'tab' as const, command: { type: 'activate-tab' as const, id: tab.id } })),
     ...state.workspaces.map(workspace => ({ id: `workspace:${workspace.id}`, label: workspace.name, detail: 'Switch workspace', kind: 'workspace' as const, command: { type: 'switch-workspace' as const, id: workspace.id } })),
@@ -36,6 +38,8 @@ export function searchBrowser(state: BrowserState, query: string, limit = 30): S
     ...state.history.map(entry => ({ id: `history:${entry.id}`, label: entry.title, detail: entry.url, kind: 'history' as const, command: { type: 'navigate' as const, url: entry.url } })),
     { id: 'new-tab', label: 'New tab', detail: 'Ctrl/Cmd+T', kind: 'command', command: { type: 'new-tab' } },
     { id: 'sidebar', label: state.sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar', detail: 'Ctrl/Cmd+B', keywords: 'toggle sidebar', kind: 'command', command: { type: 'toggle-sidebar' } },
+    ...(state.split ? [{ id: 'split:exit', label: 'Exit split view', detail: 'Keep the focused page open', kind: 'command' as const, command: { type: 'toggle-split' as const } }] : []),
+    ...partners.map(tab => ({ id: `split:${tab.id}`, label: `Split with ${tab.title}`, detail: tab.url, kind: 'command' as const, command: { type: 'split-tab' as const, id: tab.id } })),
     { id: 'workspaces', label: 'Create or manage workspaces', detail: 'Separate tabs and site logins', keywords: 'new space spaces workspace', kind: 'command', command: { type: 'panel', value: 'workspaces' } },
     { id: 'history', label: 'Browsing history', detail: 'Your local record of visited pages', kind: 'command', command: { type: 'panel', value: 'history' } },
     { id: 'bookmarks', label: 'Bookmarks', detail: 'Your saved pages', kind: 'command', command: { type: 'panel', value: 'bookmarks' } },

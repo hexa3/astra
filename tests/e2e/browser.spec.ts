@@ -417,3 +417,50 @@ test('sidebar collapse keeps native bounds aligned and works from page shortcuts
     await chrome.screenshot({ path: 'test-results/sidebar-collapsed.png' });
   } finally { await app.close(); }
 });
+
+test('split view renders two live pages and routes focus without swapping panes', async () => {
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, ASTRA_TEST_PROFILE: mkdtempSync(join(tmpdir(), 'astra-split-')) } });
+  try {
+    const chrome = await app.firstWindow();
+    const address = chrome.getByRole('textbox', { name: 'Address or search' });
+    await expect(chrome.getByRole('button', { name: 'Split view', exact: true })).toBeDisabled();
+    await address.fill(origin); await address.press('Enter');
+    await expect(chrome.getByRole('tab', { name: 'Astra test page' })).toBeVisible();
+    await chrome.getByRole('button', { name: 'New tab', exact: true }).click();
+    await address.fill(`${origin}/second`); await address.press('Enter');
+    await expect(chrome.getByRole('tab', { name: 'Second page' })).toBeVisible();
+    await chrome.getByRole('button', { name: 'Split view', exact: true }).click();
+    const panes = () => app.evaluate(({ BrowserWindow, WebContentsView }) => BrowserWindow.getAllWindows()[0].contentView.children.flatMap(view => view instanceof WebContentsView && view.getVisible() ? [{ url: view.webContents.getURL(), bounds: view.getBounds() }] : []).sort((a, b) => a.bounds.x - b.bounds.x));
+    await expect.poll(async () => (await panes()).length).toBe(2);
+    const initial = await panes();
+    expect(initial.map(pane => pane.url)).toEqual([`${origin}/second`, `${origin}/`]);
+    expect(initial[0].bounds.x + initial[0].bounds.width + 1).toBe(initial[1].bounds.x);
+    await app.evaluate(({ webContents }, url) => webContents.getAllWebContents().find(contents => contents.getURL() === url)!.focus(), `${origin}/`);
+    await expect(address).toHaveValue(`${origin}/`);
+    await expect(chrome.getByRole('button', { name: 'Focus right page' })).toHaveAttribute('aria-pressed', 'true');
+    expect(await panes()).toEqual(initial);
+    await chrome.getByRole('button', { name: 'Focus left page' }).click();
+    await expect(address).toHaveValue(`${origin}/second`);
+    await address.fill(`${origin}/form`); await address.press('Enter');
+    await expect(chrome.getByRole('tab', { name: 'Draft form' })).toBeVisible();
+    expect((await panes()).map(pane => pane.url)).toEqual([`${origin}/form`, `${origin}/`]);
+    await chrome.evaluate(() => window.astra.command({ type: 'background-limit', value: 0 }));
+    await expect.poll(async () => (await panes()).length).toBe(2);
+    await chrome.getByRole('button', { name: 'Collapse sidebar' }).click();
+    expect((await panes())[0].bounds.x).toBe(56);
+    await chrome.getByRole('button', { name: 'Open command bar' }).click();
+    await expect.poll(async () => (await panes()).length).toBe(0);
+    await chrome.getByRole('combobox', { name: 'Search tabs, history, bookmarks and commands' }).press('Escape');
+    await expect.poll(async () => (await panes()).length).toBe(2);
+    await chrome.getByRole('button', { name: 'Exit split view' }).click();
+    await expect.poll(async () => (await panes()).length).toBe(1);
+    await expect(address).toHaveValue(`${origin}/form`);
+    await chrome.getByRole('button', { name: 'Open command bar' }).click();
+    const query = chrome.getByRole('combobox', { name: 'Search tabs, history, bookmarks and commands' });
+    await query.fill('Split with Astra test page'); await query.press('Enter');
+    await expect.poll(async () => (await panes()).length).toBe(2);
+    await chrome.getByRole('button', { name: 'New tab', exact: true }).click();
+    await expect(chrome.getByRole('heading', { name: 'Make space.' })).toBeVisible();
+    await expect(chrome.getByRole('button', { name: 'Exit split view' })).toHaveCount(0);
+  } finally { await app.close(); }
+});
