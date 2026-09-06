@@ -16,7 +16,8 @@ import { pageBounds, splitBounds } from '../shared/layout';
 import type { BrowserState, Command, Entry, Tab } from '../shared/types';
 
 app.setName('Astra');
-if (!app.isPackaged && process.env.ASTRA_TEST_PROFILE) app.setPath('userData', process.env.ASTRA_TEST_PROFILE);
+const testProfile = !app.isPackaged ? process.env.ASTRA_TEST_PROFILE : undefined;
+if (testProfile) app.setPath('userData', testProfile);
 const primaryInstance = app.requestSingleInstanceLock();
 if (!primaryInstance) app.quit();
 for (const flag of ['disable-background-networking', 'disable-component-update', 'disable-domain-reliability', 'disable-sync', 'disable-http-cache', 'no-pings', 'test-third-party-cookie-phaseout']) app.commandLine.appendSwitch(flag);
@@ -341,7 +342,7 @@ async function dispatch(command: Command): Promise<void> {
 }
 app.whenReady().then(async () => {
   if (!primaryInstance) return;
-  vault = new Vault(join(app.getPath('userData'), 'vault'));
+  vault = new Vault(join(app.getPath('userData'), 'vault'), { useKeychain: !testProfile });
   state = { tabs: [], activeId: '', bookmarks: vault.get<Entry[]>('bookmarks', []), history: vault.get<Entry[]>('history', []), storage: vault.mode, storageMessage: vault.message, vaultLocked: vault.locked, theme: vault.get('theme', 'system'), panel: 'none', backgroundLimit: vault.get('background-limit', 6), workspaces: restoreWorkspaces(vault.get('workspaces', [])), activeWorkspaceId: DEFAULT_WORKSPACE.id };
   const savedActiveWorkspace = vault.get('active-workspace', state.workspaces[0].id);
   state.sidebarCollapsed = vault.get('sidebar-collapsed', false);

@@ -5,6 +5,12 @@ the production assets and launches real Electron instances with temporary
 profiles. A graphical desktop is required (or Xvfb on a Linux CI host).
 No test uses `--no-sandbox`.
 
+An explicit `ASTRA_TEST_PROFILE` in a development build selects an isolated
+profile and bypasses the OS keychain so passphrase tests exercise the same
+fallback on every platform without accessing a developer's key store. It does
+not enable plaintext persistence. Packaged builds ignore this variable and
+always retain the normal keychain/passphrase policy.
+
 `npm run test:native` verifies unload confirmation and hibernation protection
 in a separate Electron process without a DevTools client attached. Playwright's
 default dialog manager accepts unhandled `beforeunload` dialogs, so that behavior

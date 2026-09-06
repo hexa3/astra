@@ -13,13 +13,13 @@ export class Vault {
   private key?: Buffer;
   private memory = new Map<string, unknown>();
 
-  constructor(private directory: string) {
+  constructor(private directory: string, options = { useKeychain: true }) {
     if (existsSync(join(directory, 'passphrase.json'))) {
       this.locked = true;
       this.message = 'Vault locked. Unlock with your passphrase to restore encrypted records. New browsing stays in memory until then.';
       return;
     }
-    const secure = safeStorage.isEncryptionAvailable()
+    const secure = options.useKeychain && safeStorage.isEncryptionAvailable()
       && (process.platform !== 'linux' || safeStorage.getSelectedStorageBackend() !== 'basic_text');
     if (!secure) return;
     try {

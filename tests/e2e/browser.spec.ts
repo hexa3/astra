@@ -202,8 +202,8 @@ test('workspaces isolate cookies and switch their visible tabs by keyboard', asy
       // CDP keyboard injection bypasses Electron's before-input-event hook.
       const contents = BrowserWindow.getAllWindows()[0].webContents;
       contents.focus();
-      contents.sendInputEvent({ type: 'keyDown', keyCode: 'Right', modifiers: ['control', 'alt'] });
-      contents.sendInputEvent({ type: 'keyUp', keyCode: 'Right', modifiers: ['control', 'alt'] });
+      contents.sendInputEvent({ type: 'keyDown', keyCode: 'Right', modifiers: [process.platform === 'darwin' ? 'meta' : 'control', 'alt'] });
+      contents.sendInputEvent({ type: 'keyUp', keyCode: 'Right', modifiers: [process.platform === 'darwin' ? 'meta' : 'control', 'alt'] });
     });
     await expect(chrome.getByRole('combobox', { name: 'Workspace', exact: true })).toHaveValue(work.id);
     await chrome.getByRole('button', { name: 'Manage workspaces' }).click();
@@ -260,8 +260,8 @@ test('command bar jumps across workspaces and executes real browser actions', as
     await chrome.getByRole('button', { name: 'Create workspace', exact: true }).click();
     await app.evaluate(({ BrowserWindow }) => {
       const contents = BrowserWindow.getAllWindows()[0].webContents;
-      contents.focus(); contents.sendInputEvent({type: 'keyDown', keyCode: 'K', modifiers: ['control']});
-      contents.sendInputEvent({type: 'keyUp', keyCode: 'K', modifiers: ['control']});
+      contents.focus(); contents.sendInputEvent({type: 'keyDown', keyCode: 'K', modifiers: [process.platform === 'darwin' ? 'meta' : 'control']});
+      contents.sendInputEvent({type: 'keyUp', keyCode: 'K', modifiers: [process.platform === 'darwin' ? 'meta' : 'control']});
     });
     const query = chrome.getByRole('combobox', { name: 'Search tabs, history, bookmarks and commands' });
     await expect(chrome.getByRole('dialog', { name: 'Command bar' })).toBeVisible();
@@ -401,8 +401,8 @@ test('sidebar collapse keeps native bounds aligned and works from page shortcuts
     await expect(chrome.getByRole('tab', { name: 'Astra test page' })).toBeVisible();
     await app.evaluate(({ webContents }) => {
       const page = webContents.getAllWebContents().find(contents => contents.getURL().startsWith('http:'))!;
-      page.focus(); page.sendInputEvent({type: 'keyDown', keyCode: 'B', modifiers: ['control']});
-      page.sendInputEvent({type: 'keyUp', keyCode: 'B', modifiers: ['control']});
+      page.focus(); page.sendInputEvent({type: 'keyDown', keyCode: 'B', modifiers: [process.platform === 'darwin' ? 'meta' : 'control']});
+      page.sendInputEvent({type: 'keyUp', keyCode: 'B', modifiers: [process.platform === 'darwin' ? 'meta' : 'control']});
     });
     await expect(chrome.getByRole('button', { name: 'Collapse sidebar' })).toBeVisible();
     expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].contentView.children.find(view => view.getVisible())!.getBounds().x)).toBe(232);
