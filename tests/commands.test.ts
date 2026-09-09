@@ -20,3 +20,13 @@ test('tab movement validates numeric positions and tab identities', () => {
   for (const index of ['0', -1, 1.5, NaN, 100001]) assert.throws(() => validateCommand({...command, index}));
   assert.throws(() => validateCommand({...command, id: 2}));
 });
+
+test('boost commands enforce typed domains and bounded source', () => {
+  const command = {type: 'save-boost', domain: 'example.com', css: 'body { color: red }', js: 'document.title = "local"', enabled: true};
+  assert.deepEqual(validateCommand(command), command);
+  for (const malformed of [
+    {...command, domain: 4}, {...command, domain: 'x'.repeat(254)},
+    {...command, css: 'x'.repeat(100001)}, {...command, js: 'x'.repeat(100001)},
+    {...command, enabled: 'true'}, {type: 'remove-boost', domain: 2},
+  ]) assert.throws(() => validateCommand(malformed));
+});

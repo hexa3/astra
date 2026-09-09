@@ -756,6 +756,13 @@ p {
 .extension-card .extension-error { color: var(--accent); }
 .extension-actions { display: flex; gap: 8px; margin-top: 14px; }
 .extension-actions button { border: 1px solid var(--line); padding: 7px 12px; font-size: 11px; }
+.boost-form { display: grid; gap: 18px; margin-top: 28px; }
+.boost-form > label:not(.boost-toggle) { display: grid; gap: 8px; color: var(--muted); font-size: 11px; }
+.boost-form textarea { width: 100%; min-height: 150px; resize: vertical; border: 1px solid var(--line); padding: 12px; font: 12px/1.6 monospace; }
+.boost-toggle { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+.boost-actions { display: flex; align-items: center; gap: 16px; }
+.boost-actions .primary-action { margin: 0; }
+.boost-actions > button:not(.primary-action) { text-decoration: underline; font-size: 11px; }
 .error {
   display: flex;
   align-items: center;

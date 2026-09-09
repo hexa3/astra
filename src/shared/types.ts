@@ -13,6 +13,7 @@ export interface ExtensionRegistration {
   id: string; directory: string; name: string; version: string;
   permissions: string[]; hosts: string[]; enabled: boolean; error?: string;
 }
+export interface Boost { domain: string; css: string; js: string; enabled: boolean; error?: string }
 export interface BrowserState {
   tabs: Tab[]; activeId: string; bookmarks: Entry[]; history: Entry[];
   storage: 'encrypted' | 'memory'; storageMessage: string; vaultLocked: boolean;
@@ -21,7 +22,8 @@ export interface BrowserState {
   split?: { leftId: string; rightId: string };
   workspaces: Workspace[]; activeWorkspaceId: string;
   extensions?: ExtensionRegistration[]; extensionsAvailable?: boolean;
-  theme: 'system' | 'dark' | 'light'; panel: 'none' | 'bookmarks' | 'history' | 'privacy' | 'storage' | 'workspaces' | 'commands' | 'extensions';
+  boosts?: Boost[];
+  theme: 'system' | 'dark' | 'light'; panel: 'none' | 'bookmarks' | 'history' | 'privacy' | 'storage' | 'workspaces' | 'commands' | 'extensions' | 'boosts';
 }
 export type Command =
   | { type: 'navigate'; url: string }
@@ -38,6 +40,8 @@ export type Command =
   | { type: 'theme'; value: BrowserState['theme'] }
   | { type: 'load-extension' }
   | { type: 'toggle-extension' | 'remove-extension'; id: string }
+  | { type: 'save-boost'; domain: string; css: string; js: string; enabled: boolean }
+  | { type: 'remove-boost'; domain: string }
   | { type: 'panel'; value: BrowserState['panel'] };
 export interface AstraAPI {
   snapshot(): Promise<BrowserState>;

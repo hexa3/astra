@@ -17,6 +17,8 @@ export function validateCommand(raw: unknown): Command {
   if (command.type === 'theme' && typeof command.value === 'string' && ['system', 'dark', 'light'].includes(command.value)) return raw as Command;
   if (command.type === 'unlock-vault' && typeof command.passphrase === 'string' && command.passphrase.length >= 12 && command.passphrase.length <= 1024) return raw as Command;
   if (command.type === 'background-limit' && Number.isInteger(command.value) && Number(command.value) >= 0 && Number(command.value) <= 32) return raw as Command;
-  if (command.type === 'panel' && typeof command.value === 'string' && ['none', 'bookmarks', 'history', 'privacy', 'storage', 'workspaces', 'commands', 'extensions'].includes(command.value)) return raw as Command;
+  if (command.type === 'save-boost' && typeof command.domain === 'string' && command.domain.length <= 253 && typeof command.css === 'string' && command.css.length <= 100000 && typeof command.js === 'string' && command.js.length <= 100000 && typeof command.enabled === 'boolean') return raw as Command;
+  if (command.type === 'remove-boost' && typeof command.domain === 'string' && command.domain.length <= 253) return raw as Command;
+  if (command.type === 'panel' && typeof command.value === 'string' && ['none', 'bookmarks', 'history', 'privacy', 'storage', 'workspaces', 'commands', 'extensions', 'boosts'].includes(command.value)) return raw as Command;
   throw new Error('Unsupported browser command.');
 }

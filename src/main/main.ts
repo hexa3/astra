@@ -17,7 +17,7 @@ import { pageBounds, splitBounds } from '../shared/layout';
 import { profileArgument } from './profile';
 import { inspectExtension, samePermissions } from './extension-manifest';
 import { RamSessions } from './ram-sessions';
-import type { BrowserState, Command, Entry, ExtensionRegistration, Tab } from '../shared/types';
+import type { Boost, BrowserState, Command, Entry, ExtensionRegistration, Tab } from '../shared/types';
 
 app.setName('Astra');
 const testProfile = !app.isPackaged ? process.env.ASTRA_TEST_PROFILE : undefined;
@@ -45,6 +45,7 @@ const views = new Map<string, WebContentsView>();
 const preparedSessions = new Set<string>();
 const disposableSessions = new RamSessions();
 const runtimeExtensions = new WeakMap<Electron.Session, Map<string, string>>();
+const insertedBoostCSS = new Map<string, string>();
 const chromeURL = pathToFileURL(join(__dirname, '../renderer/index.html')).href;
 const active = () => state.tabs.find(tab => tab.id === state.activeId);
 const contents = () => views.get(state.activeId)?.webContents;
@@ -106,6 +107,23 @@ async function chooseExtension(): Promise<void> {
   persist(); publish();
 }
 
+async function applyBoost(tab: Tab, wc: WebContents): Promise<void> {
+  const oldKey = insertedBoostCSS.get(tab.id);
+  if (oldKey) { await wc.removeInsertedCSS(oldKey).catch(() => {}); insertedBoostCSS.delete(tab.id); }
+  let domain = '';
+  try { domain = new URL(wc.getURL()).hostname.toLowerCase(); } catch { return; }
+  const boost = state.boosts?.find(item => item.domain === domain && item.enabled);
+  if (!boost) return;
+  try {
+    if (boost.css) insertedBoostCSS.set(tab.id, await wc.insertCSS(boost.css, { cssOrigin: 'user' }));
+    if (boost.js) await wc.executeJavaScript(`(async () => {\n${boost.js}\n})()`, true);
+    boost.error = undefined;
+  } catch (cause) {
+    boost.error = cause instanceof Error ? cause.message : String(cause);
+  }
+  persist(); schedulePublish();
+}
+
 function publish(): void {
   if (!win || win.isDestroyed()) return;
   win.webContents.send('astra:state', state);
@@ -123,6 +141,7 @@ function persist(): void {
   vault.set('background-limit', state.backgroundLimit);
   vault.set('sidebar-collapsed', !!state.sidebarCollapsed);
   vault.set('extensions', state.extensions);
+  vault.set('boosts', state.boosts);
   state.storage = vault.mode; state.storageMessage = vault.message; state.vaultLocked = vault.locked;
 }
 function layout(): void {
@@ -220,6 +239,7 @@ function createView(tab: Tab): WebContentsView {
     state.history.unshift({ id: randomUUID(), url: tab.url, title: tab.title, time: Date.now() });
     state.history = state.history.slice(0, 2000);
     persist(); update();
+    void applyBoost(tab, wc);
   });
   wc.on('did-fail-load', (_event, code, description, url, mainFrame) => {
     if (mainFrame && code !== -3) {
@@ -328,6 +348,7 @@ async function dispatch(command: Command): Promise<void> {
       state.history = merge(vault.get<Entry[]>('history', []), state.history).slice(0, 2000);
       state.backgroundLimit = vault.get('background-limit', state.backgroundLimit);
       state.sidebarCollapsed = vault.get('sidebar-collapsed', state.sidebarCollapsed ?? false);
+      state.boosts = [...new Map([...(state.boosts ?? []), ...vault.get<Boost[]>('boosts', [])].map(boost => [boost.domain, boost])).values()];
       const savedExtensions = vault.get<ExtensionRegistration[]>('extensions', []);
       state.extensions ??= [];
       for (const extension of savedExtensions) if (!state.extensions.some(item => item.id === extension.id)) state.extensions.push(extension);
@@ -410,6 +431,25 @@ async function dispatch(command: Command): Promise<void> {
       state.extensions = state.extensions?.filter(item => item.id !== command.id) ?? [];
       persist(); break;
     }
+    case 'save-boost': {
+      const tab = active();
+      let domain = '';
+      try { domain = tab?.url ? new URL(tab.url).hostname.toLowerCase() : ''; } catch { /* handled below */ }
+      if (!domain || command.domain.toLowerCase() !== domain) throw new Error('Site customizations can only change the active domain.');
+      state.boosts ??= [];
+      const boost = state.boosts.find(item => item.domain === domain);
+      if (boost) Object.assign(boost, { css: command.css, js: command.js, enabled: command.enabled, error: undefined });
+      else state.boosts.push({ domain, css: command.css, js: command.js, enabled: command.enabled });
+      persist(); wc?.reload(); break;
+    }
+    case 'remove-boost': {
+      const tab = active();
+      let domain = '';
+      try { domain = tab?.url ? new URL(tab.url).hostname.toLowerCase() : ''; } catch { /* handled below */ }
+      if (!domain || command.domain.toLowerCase() !== domain) throw new Error('Site customizations can only change the active domain.');
+      state.boosts = state.boosts?.filter(item => item.domain !== domain) ?? [];
+      persist(); wc?.reload(); break;
+    }
     case 'panel': state.panel = command.value; layout(); if (command.value === 'none') contents()?.focus(); break;
   }
   publish();
@@ -417,7 +457,7 @@ async function dispatch(command: Command): Promise<void> {
 app.whenReady().then(async () => {
   if (!primaryInstance) return;
   vault = new Vault(join(app.getPath('userData'), 'vault'), { useKeychain: !testProfile });
-  state = { tabs: [], activeId: '', bookmarks: vault.get<Entry[]>('bookmarks', []), history: vault.get<Entry[]>('history', []), storage: vault.mode, storageMessage: vault.message, vaultLocked: vault.locked, theme: vault.get('theme', 'system'), panel: 'none', backgroundLimit: vault.get('background-limit', 6), workspaces: restoreWorkspaces(vault.get('workspaces', [])), activeWorkspaceId: DEFAULT_WORKSPACE.id, extensions: vault.get<ExtensionRegistration[]>('extensions', []), extensionsAvailable: RamSessions.supported() };
+  state = { tabs: [], activeId: '', bookmarks: vault.get<Entry[]>('bookmarks', []), history: vault.get<Entry[]>('history', []), storage: vault.mode, storageMessage: vault.message, vaultLocked: vault.locked, theme: vault.get('theme', 'system'), panel: 'none', backgroundLimit: vault.get('background-limit', 6), workspaces: restoreWorkspaces(vault.get('workspaces', [])), activeWorkspaceId: DEFAULT_WORKSPACE.id, extensions: vault.get<ExtensionRegistration[]>('extensions', []), extensionsAvailable: RamSessions.supported(), boosts: vault.get<Boost[]>('boosts', []) };
   const savedActiveWorkspace = vault.get('active-workspace', state.workspaces[0].id);
   state.sidebarCollapsed = vault.get('sidebar-collapsed', false);
   state.activeWorkspaceId = state.workspaces.some(workspace => workspace.id === savedActiveWorkspace) ? savedActiveWorkspace : state.workspaces[0].id;
