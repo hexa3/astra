@@ -35,6 +35,6 @@ void app.whenReady().then(async () => {
   // Windows can keep Electron's extension service-worker utility process alive
   // after app.exit(), even after its session and WebContents are closed. This is
   // a standalone test executable, so terminate deterministically after the
-  // process exit hook has synchronously erased the disposable profile.
+  // process exit hook has completed or scheduled disposable-profile cleanup.
   process.exit(0);
 }).catch(error => { console.error(error); app.exit(1); });
