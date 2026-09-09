@@ -50,3 +50,7 @@ Audited the inherited feature branch and verified a clean production build, zero
 ## 2026-09-09 18:35 GST — boosts and local assistant
 
 Per-host CSS/JavaScript Boosts now save in the encrypted vault, enforce exact active-host scoping and execute only in sandboxed page worlds. The optional AI sidebar summarizes and answers questions with a deterministic local extractive provider; page text never leaves the process and the UI states that limitation. A new end-to-end test proves real style/script injection and both assistant actions. The full 13-test Electron suite passes after preserving normal workspace sessions unless a user explicitly enables an extension; switching extension session mode warns that pages reload and current site logins clear. Next: implement link Peek, finish release-facing settings/documentation and package a verified candidate.
+
+## 2026-09-09 18:50 GST — native link Peek
+
+Holding Alt over a real page link now creates a delayed, sandboxed native preview using Chromium's hover target; releasing Alt destroys it, while trusted controls can close or promote it to a tab. Bounds remain inside the page region alongside collapsed sidebar and AI layouts. An Electron test drives actual native mouse/key input, observes the second page render, and verifies teardown. Next: consolidate the feature branch, audit remaining directive gaps, then package and smoke-test the release candidate.

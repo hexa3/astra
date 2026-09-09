@@ -79,6 +79,7 @@
     <button aria-label={bookmarked ? 'Remove bookmark' : 'Bookmark page'} aria-pressed={bookmarked} title="Bookmark · Ctrl+D" disabled={!tab?.url} onclick={() => run({ type: 'bookmark' })}><Icon name="bookmark" /></button>
     <button aria-label="Open command bar" title="Command bar · Ctrl/Cmd+K" onclick={() => run({ type: 'panel', value: 'commands' })}><Icon name="search" /><span class="key-hint">K</span></button>
     <button aria-label={state?.ai?.open ? 'Close AI sidebar' : 'Open AI sidebar'} aria-pressed={!!state?.ai?.open} title="Optional local page assistant" onclick={() => run({ type: 'toggle-ai' })}><Icon name="spark" /></button>
+    {#if state?.peek}<span class="peek-controls"><span title={state.peek.url}>PREVIEW · {state.peek.loading ? 'LOADING' : state.peek.title}</span><button aria-label="Open preview in new tab" onclick={() => run({ type: 'open-peek' })}><Icon name="arrow" /></button><button aria-label="Close preview" onclick={() => run({ type: 'close-peek' })}><Icon name="close" /></button></span>{/if}
     {#if state?.split}
       <button class="pane-focus" aria-label="Focus left page" aria-pressed={state.activeId === state.split.leftId} title="Focus left page" onclick={() => state?.split && run({ type: 'activate-tab', id: state.split.leftId })}>1</button>
       <button class="pane-focus" aria-label="Focus right page" aria-pressed={state.activeId === state.split.rightId} title="Focus right page" onclick={() => state?.split && run({ type: 'activate-tab', id: state.split.rightId })}>2</button>

@@ -363,6 +363,8 @@ p {
 .pane-focus[aria-pressed="true"] {
   border-bottom: 1px solid var(--accent);
 }
+.peek-controls { min-width: 0; max-width: 260px; display: flex; align-items: center; gap: 4px; border-left: 1px solid var(--line); padding-left: 10px; }
+.peek-controls > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font: 8px monospace; letter-spacing: .5px; }
 .address {
   height: 34px;
   display: flex;

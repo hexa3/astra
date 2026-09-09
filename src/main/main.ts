@@ -13,7 +13,7 @@ import { isWebURL, resolveAddress } from '../shared/navigation';
 import { validateCommand } from '../shared/commands';
 import { DEFAULT_WORKSPACE, restoreWorkspaces, workspacePartition } from '../shared/workspaces';
 import { moveTab } from '../shared/tab-order';
-import { pageBounds, splitBounds } from '../shared/layout';
+import { pageBounds, peekBounds, splitBounds } from '../shared/layout';
 import { profileArgument } from './profile';
 import { inspectExtension, samePermissions } from './extension-manifest';
 import { RamSessions } from './ram-sessions';
@@ -47,6 +47,10 @@ const preparedSessions = new Set<string>();
 const disposableSessions = new RamSessions();
 const runtimeExtensions = new WeakMap<Electron.Session, Map<string, string>>();
 const insertedBoostCSS = new Map<string, string>();
+let peekView: WebContentsView | undefined;
+let peekTimer: ReturnType<typeof setTimeout> | undefined;
+let altHeld = false;
+const hoveredLinks = new Map<string, string>();
 const chromeURL = pathToFileURL(join(__dirname, '../renderer/index.html')).href;
 const active = () => state.tabs.find(tab => tab.id === state.activeId);
 const contents = () => views.get(state.activeId)?.webContents;
@@ -174,12 +178,24 @@ function layout(): void {
     view.setVisible((state.split ? splitContains(id) : id === state.activeId) && state.panel === 'none' && !!tab?.url && !tab?.error);
     view.setBounds(state.split ? id === state.split.leftId ? left : right : bounds);
   }
+  if (peekView && !peekView.webContents.isDestroyed()) {
+    peekView.setVisible(state.panel === 'none');
+    peekView.setBounds(peekBounds(bounds));
+  }
 }
 function shortcut(name: string): void {
   win.webContents.focus(); win.webContents.send('astra:shortcut', name);
 }
 function bindKeys(wc: WebContents): void {
   wc.on('before-input-event', (event, input) => {
+    if (input.key.toLowerCase() === 'alt') {
+      altHeld = input.type === 'keyDown';
+      if (altHeld) {
+        const url = hoveredLinks.get(state.activeId);
+        if (url) schedulePeek(url, state.activeId);
+      } else closePeek();
+      return;
+    }
     if (input.type !== 'keyDown') return;
     const mod = process.platform === 'darwin' ? input.meta : input.control;
     const key = input.key.toLowerCase();
@@ -211,9 +227,41 @@ function bindKeys(wc: WebContents): void {
     if (mod && input.alt && /^[1-9]$/.test(key) && state.workspaces[Number(key) - 1]) action = () => switchWorkspace(state.workspaces[Number(key) - 1].id);
     if (input.alt && !mod && key === 'arrowleft') action = () => { if (!active()?.restoring && contents()?.navigationHistory.canGoBack()) contents()?.navigationHistory.goBack(); };
     if (input.alt && !mod && key === 'arrowright') action = () => { if (!active()?.restoring && contents()?.navigationHistory.canGoForward()) contents()?.navigationHistory.goForward(); };
-    if (key === 'escape' && state.panel !== 'none') action = () => { state.panel = 'none'; layout(); publish(); contents()?.focus(); };
+    if (key === 'escape' && state.peek) action = closePeek;
+    else if (key === 'escape' && state.panel !== 'none') action = () => { state.panel = 'none'; layout(); publish(); contents()?.focus(); };
     if (action) { event.preventDefault(); action(); }
   });
+}
+function closePeek(): void {
+  if (peekTimer) { clearTimeout(peekTimer); peekTimer = undefined; }
+  if (peekView) {
+    try { win.contentView.removeChildView(peekView); } catch { /* Already detached. */ }
+    if (!peekView.webContents.isDestroyed()) peekView.webContents.close();
+    peekView = undefined;
+  }
+  if (state?.peek) { state.peek = undefined; publish(); }
+}
+function schedulePeek(url: string, tabId: string): void {
+  if (!isWebURL(url) || tabId !== state.activeId) return;
+  if (peekTimer) clearTimeout(peekTimer);
+  if (state.peek?.url === url) return;
+  peekTimer = setTimeout(() => { peekTimer = undefined; if (altHeld && tabId === state.activeId && hoveredLinks.get(tabId) === url) openPeek(url); }, 350);
+}
+function openPeek(url: string): void {
+  closePeek();
+  const tab = active(); if (!tab || !isWebURL(url)) return;
+  state.peek = { url, title: new URL(url).hostname, loading: true };
+  peekView = new WebContentsView({ webPreferences: { session: pageSession(tab.workspaceId ?? DEFAULT_WORKSPACE.id), nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true, allowRunningInsecureContent: false, spellcheck: false, navigateOnDragDrop: false, safeDialogs: true, webviewTag: false } });
+  win.contentView.addChildView(peekView);
+  const wc = peekView.webContents;
+  bindKeys(wc);
+  wc.setWindowOpenHandler(({ url: target }) => { if (isWebURL(target)) newTab(target); return { action: 'deny' }; });
+  wc.on('will-navigate', (event, target) => { if (!isWebURL(target)) event.preventDefault(); });
+  wc.on('page-title-updated', (_event, title) => { if (state.peek) { state.peek.title = title.slice(0, 200); publish(); } });
+  wc.on('did-stop-loading', () => { if (state.peek) { state.peek.loading = false; state.peek.url = isWebURL(wc.getURL()) ? wc.getURL() : state.peek.url; publish(); } });
+  wc.on('did-fail-load', (_event, code, description, _target, mainFrame) => { if (mainFrame && code !== -3 && state.peek) { state.peek.loading = false; state.peek.title = `${description} (${code})`; publish(); } });
+  void wc.loadURL(url).catch(() => {});
+  layout(); publish();
 }
 function createView(tab: Tab): WebContentsView {
   const view = new WebContentsView({ webPreferences: {
@@ -234,6 +282,10 @@ function createView(tab: Tab): WebContentsView {
   });
   wc.on('will-navigate', (event, url) => { if (!isWebURL(url)) event.preventDefault(); });
   wc.on('will-redirect', (event, url) => { if (!isWebURL(url)) event.preventDefault(); });
+  wc.on('update-target-url', (_event, url) => {
+    if (url && isWebURL(url)) { hoveredLinks.set(tab.id, url); if (altHeld) schedulePeek(url, tab.id); }
+    else { hoveredLinks.delete(tab.id); if (altHeld) closePeek(); }
+  });
   const update = () => {
     if (wc.isDestroyed()) return;
     tab.loading = !!tab.restoring || wc.isLoading();
@@ -287,7 +339,7 @@ function createView(tab: Tab): WebContentsView {
   return view;
 }
 function newTab(url = '', title = 'New tab'): void {
-  state.split = undefined;
+  closePeek(); state.split = undefined;
   const tab = createTab(url, title, state.activeWorkspaceId);
   state.tabs.push(tab); state.activeId = tab.id; state.panel = 'none';
   const workspace = state.workspaces.find(workspace => workspace.id === state.activeWorkspaceId);
@@ -299,7 +351,7 @@ function newTab(url = '', title = 'New tab'): void {
 function activateTab(id: string): void {
   if (!state.tabs.some(tab => tab.id === id)) return;
   if (state.split && !splitContains(id)) state.split = undefined;
-  state.activeId = id; state.panel = 'none';
+  closePeek(); state.activeId = id; state.panel = 'none';
   const tab = active()!;
   state.activeWorkspaceId = tab.workspaceId ?? DEFAULT_WORKSPACE.id;
   const workspace = state.workspaces.find(workspace => workspace.id === state.activeWorkspaceId);
@@ -504,6 +556,8 @@ async function dispatch(command: Command): Promise<void> {
     case 'toggle-ai': state.ai!.open = !state.ai!.open; layout(); break;
     case 'ai-summarize': await runAI(); break;
     case 'ai-ask': await runAI(command.question); break;
+    case 'close-peek': closePeek(); break;
+    case 'open-peek': { const url = state.peek?.url; closePeek(); if (url) newTab(url); break; }
     case 'panel': state.panel = command.value; layout(); if (command.value === 'none') contents()?.focus(); break;
   }
   publish();

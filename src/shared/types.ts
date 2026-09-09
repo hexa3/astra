@@ -25,6 +25,7 @@ export interface BrowserState {
   extensions?: ExtensionRegistration[]; extensionsAvailable?: boolean;
   boosts?: Boost[];
   ai?: AIState;
+  peek?: { url: string; title: string; loading: boolean };
   theme: 'system' | 'dark' | 'light'; panel: 'none' | 'bookmarks' | 'history' | 'privacy' | 'storage' | 'workspaces' | 'commands' | 'extensions' | 'boosts';
 }
 export type Command =
@@ -45,6 +46,7 @@ export type Command =
   | { type: 'save-boost'; domain: string; css: string; js: string; enabled: boolean }
   | { type: 'remove-boost'; domain: string }
   | { type: 'toggle-ai' | 'ai-summarize' }
+  | { type: 'close-peek' | 'open-peek' }
   | { type: 'ai-ask'; question: string }
   | { type: 'panel'; value: BrowserState['panel'] };
 export interface AstraAPI {

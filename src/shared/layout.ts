@@ -16,3 +16,8 @@ export function splitBounds(bounds: ReturnType<typeof pageBounds>) {
     { ...bounds, x: bounds.x + leftWidth + 1, width: available - leftWidth },
   ];
 }
+
+export function peekBounds(bounds: ReturnType<typeof pageBounds>) {
+  const inset = Math.min(24, Math.floor(bounds.width / 20), Math.floor(bounds.height / 20));
+  return { x: bounds.x + inset, y: bounds.y + inset, width: Math.max(0, bounds.width - inset * 2), height: Math.max(0, bounds.height - inset * 2) };
+}

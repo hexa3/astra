@@ -97,6 +97,29 @@ test('applies a hostname boost and runs the optional assistant locally', async (
   } finally { await app.close(); }
 });
 
+test('Alt-hover opens a real link preview and releasing Alt closes it', async () => {
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, ASTRA_TEST_PROFILE: mkdtempSync(join(tmpdir(), 'astra-peek-test-')) } });
+  try {
+    const chrome = await app.firstWindow();
+    const address = chrome.getByRole('textbox', { name: 'Address or search' });
+    await address.fill(origin); await address.press('Enter');
+    await expect(chrome.getByRole('tab', { name: 'Astra test page' })).toBeVisible();
+    await app.evaluate(async ({ webContents }) => {
+      const page = webContents.getAllWebContents().find(wc => wc.getURL().startsWith('http://127.0.0.1'))!;
+      const rect = await page.executeJavaScript(`(() => { const r = document.querySelector('a').getBoundingClientRect(); return {x:r.x+r.width/2,y:r.y+r.height/2}; })()`);
+      page.sendInputEvent({ type: 'mouseMove', x: Math.round(rect.x), y: Math.round(rect.y) });
+      page.sendInputEvent({ type: 'keyDown', keyCode: 'Alt', modifiers: ['alt'] });
+    });
+    await expect(chrome.getByRole('button', { name: 'Open preview in new tab' })).toBeVisible();
+    await expect.poll(() => app.evaluate(({ webContents }) => webContents.getAllWebContents().some(wc => wc.getURL().endsWith('/second')))).toBe(true);
+    await app.evaluate(({ webContents }, sourceOrigin) => {
+      const source = webContents.getAllWebContents().find(wc => wc.getURL() === `${sourceOrigin}/`)!;
+      source.sendInputEvent({ type: 'keyUp', keyCode: 'Alt' });
+    }, origin);
+    await expect(chrome.getByRole('button', { name: 'Open preview in new tab' })).toHaveCount(0);
+  } finally { await app.close(); }
+});
+
 test('passphrase vault persists encrypted records and rejects a wrong key', async () => {
   const profile = mkdtempSync(join(tmpdir(), 'astra-vault-test-'));
   const launch = () => electron.launch({ args: ['.', '--password-store=basic'], env: { ...process.env, ASTRA_TEST_PROFILE: profile } });
