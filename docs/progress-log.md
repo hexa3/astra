@@ -46,3 +46,7 @@ The worktree still contains the uncommitted split-view controls and integration 
 ## 2026-09-09 18:00 GST — implementation resumed
 
 Audited the inherited feature branch and verified a clean production build, zero Svelte/TypeScript diagnostics and all 24 unit tests. The existing native MV3 execution proof is now connected to a real extension manager: users choose an unpacked folder, review requested access in a native confirmation, enable/disable or remove it, and see load failures. Registrations persist only through the encrypted vault; runtime data stays in disposable extension-capable sessions. Native lifecycle and MV3 worker/content-script tests pass. Next: finish per-site boosts and optional local/pluggable AI without weakening the trusted chrome boundary.
+
+## 2026-09-09 18:35 GST — boosts and local assistant
+
+Per-host CSS/JavaScript Boosts now save in the encrypted vault, enforce exact active-host scoping and execute only in sandboxed page worlds. The optional AI sidebar summarizes and answers questions with a deterministic local extractive provider; page text never leaves the process and the UI states that limitation. A new end-to-end test proves real style/script injection and both assistant actions. The full 13-test Electron suite passes after preserving normal workspace sessions unless a user explicitly enables an extension; switching extension session mode warns that pages reload and current site logins clear. Next: implement link Peek, finish release-facing settings/documentation and package a verified candidate.

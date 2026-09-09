@@ -30,3 +30,8 @@ test('boost commands enforce typed domains and bounded source', () => {
     {...command, enabled: 'true'}, {type: 'remove-boost', domain: 2},
   ]) assert.throws(() => validateCommand(malformed));
 });
+
+test('AI questions are bounded, trimmed and explicitly typed', () => {
+  assert.deepEqual(validateCommand({type: 'ai-ask', question: '  what changed?  '}), {type: 'ai-ask', question: 'what changed?'});
+  for (const question of ['', '   ', 4, 'x'.repeat(1001)]) assert.throws(() => validateCommand({type: 'ai-ask', question}));
+});

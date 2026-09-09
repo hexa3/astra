@@ -17,6 +17,7 @@ Extensions can be opened from the command bar by typing “extensions”. Loadin
 | History | Cmd/Ctrl+H |
 | Collapse / expand sidebar | Cmd/Ctrl+B |
 | Toggle split view between two pages | Cmd/Ctrl+Shift+S |
+| Toggle local AI sidebar | Cmd/Ctrl+Shift+A |
 | Back / forward | Alt+Left / Alt+Right |
 | Previous / next workspace | Cmd/Ctrl+Alt+Left / Right |
 | Switch to workspace 1–9 | Cmd/Ctrl+Alt+1–9 |

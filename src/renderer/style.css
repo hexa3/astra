@@ -307,7 +307,7 @@ p {
 .shell {
   height: 100vh;
   display: grid;
-  grid-template-columns: var(--sidebar-width, 232px) 1fr;
+  grid-template-columns: var(--sidebar-width, 232px) minmax(0, 1fr) var(--ai-width, 0px);
   grid-template-rows: 36px 52px 1fr 24px;
   overflow: hidden;
 }
@@ -549,6 +549,17 @@ p {
   overflow: auto;
   position: relative;
 }
+.ai-sidebar { grid-column: 3; grid-row: 3; min-width: 0; overflow: auto; border-left: 1px solid var(--line); padding: 22px 18px; background: color-mix(in srgb, var(--surface) 94%, transparent); backdrop-filter: blur(16px); }
+.ai-heading { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.ai-heading h2 { margin: 6px 0 14px; font: 600 26px Doto, monospace; }
+.ai-response { border-top: 1px solid var(--line); margin-top: 22px; padding-top: 18px; }
+.ai-response h3 { margin: 0 0 10px; font: 600 13px Doto, monospace; }
+.ai-response p { font-size: 12px; line-height: 1.7; }
+.ai-form { display: grid; gap: 10px; margin-top: 24px; }
+.ai-form label { color: var(--muted); font-size: 11px; }
+.ai-form textarea { min-height: 90px; resize: vertical; border: 1px solid var(--line); padding: 10px; font: 12px/1.5 Arial, sans-serif; }
+.ai-form button { border: 1px solid var(--line); justify-content: space-between; padding: 8px 10px; font-size: 11px; }
+.ai-caveat { margin-top: 28px; color: var(--muted); font-size: 10px; line-height: 1.6; }
 .newtab {
   min-height: 100%;
   display: flex;

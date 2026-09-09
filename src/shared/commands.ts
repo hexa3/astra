@@ -6,7 +6,7 @@ export function validateCommand(raw: unknown): Command {
   if (!raw || typeof raw !== 'object') throw new Error('Invalid command.');
   const command = raw as Record<string, unknown>;
   if (typeof command.type !== 'string') throw new Error('Invalid command.');
-  const simple = ['back', 'forward', 'reload', 'stop', 'bookmark', 'clear-history', 'toggle-sidebar', 'toggle-split', 'load-extension'];
+  const simple = ['back', 'forward', 'reload', 'stop', 'bookmark', 'clear-history', 'toggle-sidebar', 'toggle-split', 'load-extension', 'toggle-ai', 'ai-summarize'];
   if (simple.includes(command.type)) return raw as Command;
   if (command.type === 'navigate' && typeof command.url === 'string' && command.url.length <= 8192) return raw as Command;
   if (command.type === 'new-tab' && (command.url === undefined || typeof command.url === 'string' && command.url.length <= 8192)) return raw as Command;
@@ -19,6 +19,7 @@ export function validateCommand(raw: unknown): Command {
   if (command.type === 'background-limit' && Number.isInteger(command.value) && Number(command.value) >= 0 && Number(command.value) <= 32) return raw as Command;
   if (command.type === 'save-boost' && typeof command.domain === 'string' && command.domain.length <= 253 && typeof command.css === 'string' && command.css.length <= 100000 && typeof command.js === 'string' && command.js.length <= 100000 && typeof command.enabled === 'boolean') return raw as Command;
   if (command.type === 'remove-boost' && typeof command.domain === 'string' && command.domain.length <= 253) return raw as Command;
+  if (command.type === 'ai-ask' && typeof command.question === 'string' && command.question.trim().length > 0 && command.question.length <= 1000) return { type: 'ai-ask', question: command.question.trim() };
   if (command.type === 'panel' && typeof command.value === 'string' && ['none', 'bookmarks', 'history', 'privacy', 'storage', 'workspaces', 'commands', 'extensions', 'boosts'].includes(command.value)) return raw as Command;
   throw new Error('Unsupported browser command.');
 }

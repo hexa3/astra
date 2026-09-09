@@ -17,6 +17,7 @@ import { pageBounds, splitBounds } from '../shared/layout';
 import { profileArgument } from './profile';
 import { inspectExtension, samePermissions } from './extension-manifest';
 import { RamSessions } from './ram-sessions';
+import { modelProviders, type PageDocument } from './ai';
 import type { Boost, BrowserState, Command, Entry, ExtensionRegistration, Tab } from '../shared/types';
 
 app.setName('Astra');
@@ -53,11 +54,13 @@ const splitContains = (id: string) => state.split?.leftId === id || state.split?
 
 function pageSession(workspaceId: string): Electron.Session {
   const partition = workspacePartition(workspaceId);
-  const context = RamSessions.supported() ? disposableSessions.open(partition) : session.fromPartition(partition, { cache: false });
-  if (!preparedSessions.has(partition)) {
+  const extensionsEnabled = state.extensions?.some(extension => extension.enabled) ?? false;
+  const context = extensionsEnabled && RamSessions.supported() ? disposableSessions.open(partition) : session.fromPartition(partition, { cache: false });
+  const preparationKey = `${extensionsEnabled ? 'extensions' : 'normal'}:${partition}`;
+  if (!preparedSessions.has(preparationKey)) {
     installPrivacy(context, id => state.tabs.find(tab => views.get(tab.id)?.webContents?.id === id), schedulePublish);
-    preparedSessions.add(partition);
-    void applyExtensions(context);
+    preparedSessions.add(preparationKey);
+    if (extensionsEnabled) void applyExtensions(context);
   }
   return context;
 }
@@ -96,15 +99,32 @@ async function chooseExtension(): Promise<void> {
   const directory = result.filePaths[0];
   const summary = inspectExtension(directory);
   const access = [summary.permissions.length ? `Browser permissions:\n${summary.permissions.join('\n')}` : 'Browser permissions: none', summary.hosts.length ? `\nSite access:\n${summary.hosts.join('\n')}` : '\nSite access: none'].join('');
-  const review = await dialog.showMessageBox(win, { type: 'warning', title: 'Review extension access', message: `Load ${summary.name} ${summary.version}?`, detail: `${access}\n\nExtensions can read or change pages matching their site access. Only continue if you trust this local folder.`, buttons: ['Cancel', 'Load extension'], defaultId: 0, cancelId: 0, noLink: true });
+  const review = await dialog.showMessageBox(win, { type: 'warning', title: 'Review extension access', message: `Load ${summary.name} ${summary.version}?`, detail: `${access}\n\nExtensions can read or change pages matching their site access. Enabling the first extension reloads open pages in a disposable context and clears current site logins. Only continue if you trust this local folder.`, buttons: ['Cancel', 'Load extension'], defaultId: 0, cancelId: 0, noLink: true });
   if (review.response !== 1) return;
+  const hadEnabled = state.extensions?.some(item => item.enabled) ?? false;
   state.extensions ??= [];
   const existing = state.extensions.find(item => item.directory === directory);
   if (existing) Object.assign(existing, summary, { enabled: true, error: undefined });
   else state.extensions.push({ id: randomUUID(), directory, ...summary, enabled: true });
-  for (const context of disposableSessions.all()) await applyExtensions(context);
-  for (const view of views.values()) if (!view.webContents.isDestroyed()) view.webContents.reload();
+  if (!hadEnabled) migratePageSessions();
+  else { for (const context of disposableSessions.all()) await applyExtensions(context); for (const view of views.values()) if (!view.webContents.isDestroyed()) view.webContents.reload(); }
   persist(); publish();
+}
+
+function migratePageSessions(): void {
+  const live = [...views.entries()];
+  for (const [id, view] of live) {
+    if (!view.webContents.isDestroyed()) view.webContents.close({ waitForBeforeUnload: false });
+    try { win.contentView.removeChildView(view); } catch { /* Closing may detach it first. */ }
+    views.delete(id);
+    const tab = state.tabs.find(item => item.id === id); if (tab) tab.suspended = true;
+  }
+  const visibleIds = state.split ? [state.split.leftId, state.split.rightId] : [state.activeId];
+  for (const id of visibleIds) {
+    const tab = state.tabs.find(item => item.id === id);
+    if (tab?.url) { tab.suspended = false; void createView(tab).webContents.loadURL(tab.url).catch(() => {}); }
+  }
+  layout(); publish(); hibernator.schedule();
 }
 
 async function applyBoost(tab: Tab, wc: WebContents): Promise<void> {
@@ -147,7 +167,7 @@ function persist(): void {
 function layout(): void {
   if (!win || win.isDestroyed()) return;
   const [width, height] = win.getContentSize();
-  const bounds = pageBounds(width, height, state.sidebarCollapsed);
+  const bounds = pageBounds(width, height, state.sidebarCollapsed, state.ai?.open);
   const [left, right] = splitBounds(bounds);
   for (const [id, view] of views) {
     const tab = state.tabs.find(tab => tab.id === id);
@@ -173,6 +193,7 @@ function bindKeys(wc: WebContents): void {
       state.panel = state.panel === 'commands' ? 'none' : 'commands';
       layout(); publish(); win.webContents.focus();
     };
+    if (mod && input.shift && key === 'a') action = () => { void dispatch({ type: 'toggle-ai' }); };
     if (mod && key === 't') action = () => { newTab(); shortcut('address'); };
     if (mod && key === 'w') action = () => closeTab(state.activeId);
     if ((mod && key === 'r') || key === 'f5') action = () => { void dispatch({ type: 'reload' }); };
@@ -326,6 +347,27 @@ async function closeTab(id: string): Promise<void> {
   }
   layout(); publish(); persist();
 }
+async function pageDocument(): Promise<PageDocument> {
+  const tab = active(), wc = contents();
+  if (!tab?.url || !wc || wc.isDestroyed() || tab.error) throw new Error('Open a readable webpage first.');
+  const sourceUrl = wc.getURL();
+  const extracted = await wc.executeJavaScript(`({ title: document.title, text: (document.body?.innerText || '').slice(0, 200000) })`, true) as { title?: unknown; text?: unknown };
+  if (wc.isDestroyed() || wc.getURL() !== sourceUrl) throw new Error('The page changed while Astra was reading it. Try again.');
+  return { url: sourceUrl, title: typeof extracted.title === 'string' ? extracted.title.slice(0, 500) : tab.title, text: typeof extracted.text === 'string' ? extracted.text : '' };
+}
+async function runAI(question?: string): Promise<void> {
+  const ai = state.ai!;
+  const provider = modelProviders.get(ai.provider);
+  if (!provider) throw new Error('The selected AI provider is unavailable.');
+  ai.busy = true; ai.error = undefined; publish();
+  try {
+    const page = await pageDocument();
+    ai.sourceUrl = page.url;
+    if (question) ai.answer = await provider.answer(page, question);
+    else ai.summary = await provider.summarize(page);
+  } catch (cause) { ai.error = cause instanceof Error ? cause.message : String(cause); }
+  finally { ai.busy = false; publish(); }
+}
 function toggleBookmark(): void {
   const tab = active(); if (!tab?.url) return;
   const index = state.bookmarks.findIndex(entry => entry.url === tab.url);
@@ -418,17 +460,26 @@ async function dispatch(command: Command): Promise<void> {
     case 'toggle-extension': {
       const extension = state.extensions?.find(item => item.id === command.id);
       if (!extension) break;
+      const hadEnabled = state.extensions?.some(item => item.enabled) ?? false;
+      const confirm = await dialog.showMessageBox(win, { type: 'question', title: 'Change extension state?', message: `${extension.enabled ? 'Disable' : 'Enable'} ${extension.name}?`, detail: 'Open pages will reload. If this changes the browser session mode, current site logins are cleared.', buttons: ['Cancel', extension.enabled ? 'Disable' : 'Enable'], defaultId: 0, cancelId: 0, noLink: true });
+      if (confirm.response !== 1) break;
       extension.enabled = !extension.enabled; extension.error = undefined;
-      for (const context of disposableSessions.all()) await applyExtensions(context);
-      for (const view of views.values()) if (!view.webContents.isDestroyed()) view.webContents.reload();
+      const hasEnabled = state.extensions?.some(item => item.enabled) ?? false;
+      if (hadEnabled !== hasEnabled) migratePageSessions();
+      else { for (const context of disposableSessions.all()) await applyExtensions(context); for (const view of views.values()) if (!view.webContents.isDestroyed()) view.webContents.reload(); }
       persist(); break;
     }
     case 'remove-extension': {
       const extension = state.extensions?.find(item => item.id === command.id);
       if (!extension) break;
+      const confirm = await dialog.showMessageBox(win, { type: 'question', title: 'Remove extension?', message: `Remove ${extension.name}?`, detail: extension.enabled ? 'Open pages will reload. Removing the last enabled extension clears its disposable site session.' : 'The local extension folder will not be deleted.', buttons: ['Cancel', 'Remove'], defaultId: 0, cancelId: 0, noLink: true });
+      if (confirm.response !== 1) break;
+      const hadEnabled = state.extensions?.some(item => item.enabled) ?? false;
       extension.enabled = false;
       for (const context of disposableSessions.all()) await applyExtensions(context);
       state.extensions = state.extensions?.filter(item => item.id !== command.id) ?? [];
+      const hasEnabled = state.extensions.some(item => item.enabled);
+      if (hadEnabled !== hasEnabled) migratePageSessions();
       persist(); break;
     }
     case 'save-boost': {
@@ -450,6 +501,9 @@ async function dispatch(command: Command): Promise<void> {
       state.boosts = state.boosts?.filter(item => item.domain !== domain) ?? [];
       persist(); wc?.reload(); break;
     }
+    case 'toggle-ai': state.ai!.open = !state.ai!.open; layout(); break;
+    case 'ai-summarize': await runAI(); break;
+    case 'ai-ask': await runAI(command.question); break;
     case 'panel': state.panel = command.value; layout(); if (command.value === 'none') contents()?.focus(); break;
   }
   publish();
@@ -457,7 +511,8 @@ async function dispatch(command: Command): Promise<void> {
 app.whenReady().then(async () => {
   if (!primaryInstance) return;
   vault = new Vault(join(app.getPath('userData'), 'vault'), { useKeychain: !testProfile });
-  state = { tabs: [], activeId: '', bookmarks: vault.get<Entry[]>('bookmarks', []), history: vault.get<Entry[]>('history', []), storage: vault.mode, storageMessage: vault.message, vaultLocked: vault.locked, theme: vault.get('theme', 'system'), panel: 'none', backgroundLimit: vault.get('background-limit', 6), workspaces: restoreWorkspaces(vault.get('workspaces', [])), activeWorkspaceId: DEFAULT_WORKSPACE.id, extensions: vault.get<ExtensionRegistration[]>('extensions', []), extensionsAvailable: RamSessions.supported(), boosts: vault.get<Boost[]>('boosts', []) };
+  const localModel = modelProviders.get('local-extractive')!;
+  state = { tabs: [], activeId: '', bookmarks: vault.get<Entry[]>('bookmarks', []), history: vault.get<Entry[]>('history', []), storage: vault.mode, storageMessage: vault.message, vaultLocked: vault.locked, theme: vault.get('theme', 'system'), panel: 'none', backgroundLimit: vault.get('background-limit', 6), workspaces: restoreWorkspaces(vault.get('workspaces', [])), activeWorkspaceId: DEFAULT_WORKSPACE.id, extensions: vault.get<ExtensionRegistration[]>('extensions', []), extensionsAvailable: RamSessions.supported(), boosts: vault.get<Boost[]>('boosts', []), ai: { open: false, busy: false, provider: localModel.id, disclosure: localModel.disclosure } };
   const savedActiveWorkspace = vault.get('active-workspace', state.workspaces[0].id);
   state.sidebarCollapsed = vault.get('sidebar-collapsed', false);
   state.activeWorkspaceId = state.workspaces.some(workspace => workspace.id === savedActiveWorkspace) ? savedActiveWorkspace : state.workspaces[0].id;

@@ -1,10 +1,11 @@
 export const CHROME_TOP = 88;
 export const STATUS_HEIGHT = 24;
+export const AI_WIDTH = 336;
 export const sidebarWidth = (collapsed = false): number => collapsed ? 56 : 232;
 
-export function pageBounds(width: number, height: number, collapsed = false) {
+export function pageBounds(width: number, height: number, collapsed = false, aiOpen = false) {
   const x = sidebarWidth(collapsed);
-  return { x, y: CHROME_TOP, width: Math.max(0, width - x), height: Math.max(0, height - CHROME_TOP - STATUS_HEIGHT) };
+  return { x, y: CHROME_TOP, width: Math.max(0, width - x - (aiOpen ? AI_WIDTH : 0)), height: Math.max(0, height - CHROME_TOP - STATUS_HEIGHT) };
 }
 
 export function splitBounds(bounds: ReturnType<typeof pageBounds>) {

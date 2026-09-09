@@ -69,6 +69,34 @@ test('launches, renders a page and supports navigation, tabs and privacy', async
   } finally { await app.close(); }
 });
 
+test('applies a hostname boost and runs the optional assistant locally', async () => {
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, ASTRA_TEST_PROFILE: mkdtempSync(join(tmpdir(), 'astra-tools-test-')) } });
+  try {
+    const chrome = await app.firstWindow();
+    const address = chrome.getByRole('textbox', { name: 'Address or search' });
+    await address.fill(origin); await address.press('Enter');
+    await expect(chrome.getByRole('tab', { name: 'Astra test page' })).toBeVisible();
+    await chrome.getByRole('button', { name: 'Customize this site' }).click();
+    await chrome.getByLabel('CSS').fill('h1 { color: rgb(1, 2, 3) }');
+    await chrome.getByLabel('JavaScript').fill("document.documentElement.dataset.astraBoost = 'active'");
+    await chrome.getByRole('button', { name: 'Save and reload' }).click();
+    await chrome.getByRole('button', { name: 'Close site customization' }).click();
+    await expect.poll(() => app.evaluate(async ({ webContents }) => {
+      const page = webContents.getAllWebContents().find(wc => wc.getURL().startsWith('http://127.0.0.1'))!;
+      return page.executeJavaScript(`({ boost: document.documentElement.dataset.astraBoost, color: getComputedStyle(document.querySelector('h1')).color })`);
+    })).toEqual({ boost: 'active', color: 'rgb(1, 2, 3)' });
+
+    await chrome.getByRole('button', { name: 'Open AI sidebar' }).click();
+    await chrome.getByRole('button', { name: 'Summarize this page' }).click();
+    await expect(chrome.getByRole('heading', { name: 'Summary' })).toBeVisible();
+    await expect(chrome.getByText(/real rendered page/i)).toBeVisible();
+    await chrome.getByLabel('Ask about this page').fill('What does the page render?');
+    await chrome.getByRole('button', { name: 'Find an answer' }).click();
+    await expect(chrome.getByRole('heading', { name: 'From this page' })).toBeVisible();
+    await expect(chrome.getByText('Nothing leaves this device.', { exact: false })).toBeVisible();
+  } finally { await app.close(); }
+});
+
 test('passphrase vault persists encrypted records and rejects a wrong key', async () => {
   const profile = mkdtempSync(join(tmpdir(), 'astra-vault-test-'));
   const launch = () => electron.launch({ args: ['.', '--password-store=basic'], env: { ...process.env, ASTRA_TEST_PROFILE: profile } });

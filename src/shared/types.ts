@@ -14,6 +14,7 @@ export interface ExtensionRegistration {
   permissions: string[]; hosts: string[]; enabled: boolean; error?: string;
 }
 export interface Boost { domain: string; css: string; js: string; enabled: boolean; error?: string }
+export interface AIState { open: boolean; busy: boolean; provider: string; disclosure: string; sourceUrl?: string; summary?: string; answer?: string; error?: string }
 export interface BrowserState {
   tabs: Tab[]; activeId: string; bookmarks: Entry[]; history: Entry[];
   storage: 'encrypted' | 'memory'; storageMessage: string; vaultLocked: boolean;
@@ -23,6 +24,7 @@ export interface BrowserState {
   workspaces: Workspace[]; activeWorkspaceId: string;
   extensions?: ExtensionRegistration[]; extensionsAvailable?: boolean;
   boosts?: Boost[];
+  ai?: AIState;
   theme: 'system' | 'dark' | 'light'; panel: 'none' | 'bookmarks' | 'history' | 'privacy' | 'storage' | 'workspaces' | 'commands' | 'extensions' | 'boosts';
 }
 export type Command =
@@ -42,6 +44,8 @@ export type Command =
   | { type: 'toggle-extension' | 'remove-extension'; id: string }
   | { type: 'save-boost'; domain: string; css: string; js: string; enabled: boolean }
   | { type: 'remove-boost'; domain: string }
+  | { type: 'toggle-ai' | 'ai-summarize' }
+  | { type: 'ai-ask'; question: string }
   | { type: 'panel'; value: BrowserState['panel'] };
 export interface AstraAPI {
   snapshot(): Promise<BrowserState>;

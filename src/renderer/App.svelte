@@ -8,7 +8,8 @@
   import TabList from './TabList.svelte';
   import ExtensionsPanel from './ExtensionsPanel.svelte';
   import BoostPanel from './BoostPanel.svelte';
-  import { sidebarWidth } from '../shared/layout';
+  import AISidebar from './AISidebar.svelte';
+  import { AI_WIDTH, sidebarWidth } from '../shared/layout';
   let state: BrowserState | undefined;
   let address = '';
   let search = '';
@@ -53,7 +54,7 @@
 
 <svelte:head><title>Astra{tab?.url ? ` — ${tab.title}` : ''}</title></svelte:head>
 
-<div class="shell" style={`--sidebar-width:${sidebarWidth(state?.sidebarCollapsed)}px`}>
+<div class="shell" class:ai-open={state?.ai?.open} style={`--sidebar-width:${sidebarWidth(state?.sidebarCollapsed)}px;--ai-width:${state?.ai?.open ? AI_WIDTH : 0}px`}>
   <header class="masthead">
     <div class="wordmark">ASTRA<span class="brand-dot" aria-hidden="true"></span></div>
     {#if error}
@@ -77,6 +78,7 @@
     </form>
     <button aria-label={bookmarked ? 'Remove bookmark' : 'Bookmark page'} aria-pressed={bookmarked} title="Bookmark · Ctrl+D" disabled={!tab?.url} onclick={() => run({ type: 'bookmark' })}><Icon name="bookmark" /></button>
     <button aria-label="Open command bar" title="Command bar · Ctrl/Cmd+K" onclick={() => run({ type: 'panel', value: 'commands' })}><Icon name="search" /><span class="key-hint">K</span></button>
+    <button aria-label={state?.ai?.open ? 'Close AI sidebar' : 'Open AI sidebar'} aria-pressed={!!state?.ai?.open} title="Optional local page assistant" onclick={() => run({ type: 'toggle-ai' })}><Icon name="spark" /></button>
     {#if state?.split}
       <button class="pane-focus" aria-label="Focus left page" aria-pressed={state.activeId === state.split.leftId} title="Focus left page" onclick={() => state?.split && run({ type: 'activate-tab', id: state.split.leftId })}>1</button>
       <button class="pane-focus" aria-label="Focus right page" aria-pressed={state.activeId === state.split.rightId} title="Focus right page" onclick={() => state?.split && run({ type: 'activate-tab', id: state.split.rightId })}>2</button>
@@ -152,5 +154,6 @@
       </section>
     {/if}
   </main>
+  {#if state?.ai?.open}<AISidebar ai={state.ai} hasPage={!!tab?.url && !tab.error} {run} />{/if}
   <footer class="status"><span class="status-dot" aria-hidden="true"></span><span>{tab?.loading ? 'LOADING' : 'READY'}</span><button class="status-storage" aria-label="Encrypted storage settings" onclick={() => run({ type: 'panel', value: 'storage' })}>{state?.storage === 'encrypted' ? 'ENCRYPTED RECORDS' : state?.vaultLocked ? 'VAULT LOCKED · UNLOCK RECORDS' : 'MEMORY ONLY · SET UP ENCRYPTED STORAGE'}</button><span>{tab?.blocked ?? 0} TRACKERS BLOCKED</span></footer>
 </div>
