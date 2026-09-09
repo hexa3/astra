@@ -748,6 +748,14 @@ p {
 .privacy-details dd {
   margin: 0;
 }
+.extension-list { margin-top: 28px; border-top: 1px solid var(--line); }
+.extension-card { padding: 20px 0; border-bottom: 1px solid var(--line); }
+.extension-card > div:first-child { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+.extension-card strong { font: 600 18px Doto, monospace; }
+.extension-card span, .extension-card p { color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
+.extension-card .extension-error { color: var(--accent); }
+.extension-actions { display: flex; gap: 8px; margin-top: 14px; }
+.extension-actions button { border: 1px solid var(--line); padding: 7px 12px; font-size: 11px; }
 .error {
   display: flex;
   align-items: center;

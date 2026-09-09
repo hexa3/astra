@@ -44,6 +44,7 @@ export function searchBrowser(state: BrowserState, query: string, limit = 30): S
     { id: 'history', label: 'Browsing history', detail: 'Your local record of visited pages', kind: 'command', command: { type: 'panel', value: 'history' } },
     { id: 'bookmarks', label: 'Bookmarks', detail: 'Your saved pages', kind: 'command', command: { type: 'panel', value: 'bookmarks' } },
     { id: 'privacy', label: 'Behind the page', detail: 'Privacy, memory and background pages', keywords: 'resource trackers permissions', kind: 'command', command: { type: 'panel', value: 'privacy' } },
+    { id: 'extensions', label: 'Extensions', detail: 'Load and review unpacked Manifest V3 extensions', keywords: 'addons plugins', kind: 'command', command: { type: 'panel', value: 'extensions' } },
     { id: 'storage', label: 'Encrypted storage', detail: 'Create or unlock your local vault', keywords: 'password passphrase', kind: 'command', command: { type: 'panel', value: 'storage' } },
     ...(['dark', 'light', 'system'] as const).map(theme => ({ id: `theme:${theme}`, label: `${theme[0].toUpperCase()}${theme.slice(1)} theme`, detail: 'Change browser appearance', kind: 'command' as const, command: { type: 'theme' as const, value: theme } })),
   ];

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, WebContentsView, ipcMain, Menu, session, nativeTheme } from 'electron';
+import { app, BrowserWindow, WebContentsView, ipcMain, Menu, session, nativeTheme, dialog } from 'electron';
 import type { IpcMainInvokeEvent, WebContents } from 'electron';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -15,7 +15,9 @@ import { DEFAULT_WORKSPACE, restoreWorkspaces, workspacePartition } from '../sha
 import { moveTab } from '../shared/tab-order';
 import { pageBounds, splitBounds } from '../shared/layout';
 import { profileArgument } from './profile';
-import type { BrowserState, Command, Entry, Tab } from '../shared/types';
+import { inspectExtension, samePermissions } from './extension-manifest';
+import { RamSessions } from './ram-sessions';
+import type { BrowserState, Command, Entry, ExtensionRegistration, Tab } from '../shared/types';
 
 app.setName('Astra');
 const testProfile = !app.isPackaged ? process.env.ASTRA_TEST_PROFILE : undefined;
@@ -41,6 +43,8 @@ const pendingURLs: string[] = [];
 let publishTimer: ReturnType<typeof setTimeout> | undefined;
 const views = new Map<string, WebContentsView>();
 const preparedSessions = new Set<string>();
+const disposableSessions = new RamSessions();
+const runtimeExtensions = new WeakMap<Electron.Session, Map<string, string>>();
 const chromeURL = pathToFileURL(join(__dirname, '../renderer/index.html')).href;
 const active = () => state.tabs.find(tab => tab.id === state.activeId);
 const contents = () => views.get(state.activeId)?.webContents;
@@ -48,12 +52,58 @@ const splitContains = (id: string) => state.split?.leftId === id || state.split?
 
 function pageSession(workspaceId: string): Electron.Session {
   const partition = workspacePartition(workspaceId);
-  const context = session.fromPartition(partition, { cache: false });
+  const context = RamSessions.supported() ? disposableSessions.open(partition) : session.fromPartition(partition, { cache: false });
   if (!preparedSessions.has(partition)) {
     installPrivacy(context, id => state.tabs.find(tab => views.get(tab.id)?.webContents?.id === id), schedulePublish);
     preparedSessions.add(partition);
+    void applyExtensions(context);
   }
   return context;
+}
+
+async function applyExtensions(context: Electron.Session): Promise<void> {
+  if (!RamSessions.supported()) return;
+  const loaded = runtimeExtensions.get(context) ?? new Map<string, string>();
+  runtimeExtensions.set(context, loaded);
+  for (const registration of state.extensions ?? []) {
+    const runtimeId = loaded.get(registration.id);
+    if (!registration.enabled) {
+      if (runtimeId) { context.extensions.removeExtension(runtimeId); loaded.delete(registration.id); }
+      continue;
+    }
+    if (runtimeId) continue;
+    try {
+      const current = inspectExtension(registration.directory);
+      if (!samePermissions(registration, current)) {
+        registration.enabled = false;
+        registration.error = 'Permissions changed on disk. Remove and review this extension again.';
+        continue;
+      }
+      const extension = await context.extensions.loadExtension(registration.directory, { allowFileAccess: false });
+      loaded.set(registration.id, extension.id); registration.error = undefined;
+    } catch (cause) {
+      registration.enabled = false; registration.error = cause instanceof Error ? cause.message : String(cause);
+    }
+  }
+  persist(); schedulePublish();
+}
+
+async function chooseExtension(): Promise<void> {
+  if (!RamSessions.supported()) throw new Error('Disposable extension sessions are unavailable on this system.');
+  const result = await dialog.showOpenDialog(win, { title: 'Load unpacked Manifest V3 extension', properties: ['openDirectory'] });
+  if (result.canceled || !result.filePaths[0]) return;
+  const directory = result.filePaths[0];
+  const summary = inspectExtension(directory);
+  const access = [summary.permissions.length ? `Browser permissions:\n${summary.permissions.join('\n')}` : 'Browser permissions: none', summary.hosts.length ? `\nSite access:\n${summary.hosts.join('\n')}` : '\nSite access: none'].join('');
+  const review = await dialog.showMessageBox(win, { type: 'warning', title: 'Review extension access', message: `Load ${summary.name} ${summary.version}?`, detail: `${access}\n\nExtensions can read or change pages matching their site access. Only continue if you trust this local folder.`, buttons: ['Cancel', 'Load extension'], defaultId: 0, cancelId: 0, noLink: true });
+  if (review.response !== 1) return;
+  state.extensions ??= [];
+  const existing = state.extensions.find(item => item.directory === directory);
+  if (existing) Object.assign(existing, summary, { enabled: true, error: undefined });
+  else state.extensions.push({ id: randomUUID(), directory, ...summary, enabled: true });
+  for (const context of disposableSessions.all()) await applyExtensions(context);
+  for (const view of views.values()) if (!view.webContents.isDestroyed()) view.webContents.reload();
+  persist(); publish();
 }
 
 function publish(): void {
@@ -72,6 +122,7 @@ function persist(): void {
   vault.set('theme', state.theme);
   vault.set('background-limit', state.backgroundLimit);
   vault.set('sidebar-collapsed', !!state.sidebarCollapsed);
+  vault.set('extensions', state.extensions);
   state.storage = vault.mode; state.storageMessage = vault.message; state.vaultLocked = vault.locked;
 }
 function layout(): void {
@@ -277,6 +328,9 @@ async function dispatch(command: Command): Promise<void> {
       state.history = merge(vault.get<Entry[]>('history', []), state.history).slice(0, 2000);
       state.backgroundLimit = vault.get('background-limit', state.backgroundLimit);
       state.sidebarCollapsed = vault.get('sidebar-collapsed', state.sidebarCollapsed ?? false);
+      const savedExtensions = vault.get<ExtensionRegistration[]>('extensions', []);
+      state.extensions ??= [];
+      for (const extension of savedExtensions) if (!state.extensions.some(item => item.id === extension.id)) state.extensions.push(extension);
       const savedWorkspaces = restoreWorkspaces(vault.get('workspaces', []));
       state.workspaces = [...new Map([...state.workspaces, ...savedWorkspaces].map(workspace => [workspace.id, workspace])).values()];
       for (const tab of restoreSavedTabs(vault.get('session', []), state.workspaces)) {
@@ -339,6 +393,23 @@ async function dispatch(command: Command): Promise<void> {
     case 'remove-bookmark': state.bookmarks = state.bookmarks.filter(item => item.id !== command.id); persist(); break;
     case 'clear-history': state.history = []; persist(); break;
     case 'theme': state.theme = command.value; nativeTheme.themeSource = command.value; persist(); break;
+    case 'load-extension': await chooseExtension(); break;
+    case 'toggle-extension': {
+      const extension = state.extensions?.find(item => item.id === command.id);
+      if (!extension) break;
+      extension.enabled = !extension.enabled; extension.error = undefined;
+      for (const context of disposableSessions.all()) await applyExtensions(context);
+      for (const view of views.values()) if (!view.webContents.isDestroyed()) view.webContents.reload();
+      persist(); break;
+    }
+    case 'remove-extension': {
+      const extension = state.extensions?.find(item => item.id === command.id);
+      if (!extension) break;
+      extension.enabled = false;
+      for (const context of disposableSessions.all()) await applyExtensions(context);
+      state.extensions = state.extensions?.filter(item => item.id !== command.id) ?? [];
+      persist(); break;
+    }
     case 'panel': state.panel = command.value; layout(); if (command.value === 'none') contents()?.focus(); break;
   }
   publish();
@@ -346,7 +417,7 @@ async function dispatch(command: Command): Promise<void> {
 app.whenReady().then(async () => {
   if (!primaryInstance) return;
   vault = new Vault(join(app.getPath('userData'), 'vault'), { useKeychain: !testProfile });
-  state = { tabs: [], activeId: '', bookmarks: vault.get<Entry[]>('bookmarks', []), history: vault.get<Entry[]>('history', []), storage: vault.mode, storageMessage: vault.message, vaultLocked: vault.locked, theme: vault.get('theme', 'system'), panel: 'none', backgroundLimit: vault.get('background-limit', 6), workspaces: restoreWorkspaces(vault.get('workspaces', [])), activeWorkspaceId: DEFAULT_WORKSPACE.id };
+  state = { tabs: [], activeId: '', bookmarks: vault.get<Entry[]>('bookmarks', []), history: vault.get<Entry[]>('history', []), storage: vault.mode, storageMessage: vault.message, vaultLocked: vault.locked, theme: vault.get('theme', 'system'), panel: 'none', backgroundLimit: vault.get('background-limit', 6), workspaces: restoreWorkspaces(vault.get('workspaces', [])), activeWorkspaceId: DEFAULT_WORKSPACE.id, extensions: vault.get<ExtensionRegistration[]>('extensions', []), extensionsAvailable: RamSessions.supported() };
   const savedActiveWorkspace = vault.get('active-workspace', state.workspaces[0].id);
   state.sidebarCollapsed = vault.get('sidebar-collapsed', false);
   state.activeWorkspaceId = state.workspaces.some(workspace => workspace.id === savedActiveWorkspace) ? savedActiveWorkspace : state.workspaces[0].id;
@@ -414,4 +485,4 @@ app.on('open-url', (event, url) => {
 });
 app.on('before-quit', event => { if (!quitting && win && !win.isDestroyed()) { event.preventDefault(); win.close(); } });
 app.on('window-all-closed', () => app.quit());
-app.on('will-quit', () => { if (publishTimer) clearTimeout(publishTimer); if (metricsTimer) clearInterval(metricsTimer); hibernator?.stop(); vault?.close(); });
+app.on('will-quit', () => { if (publishTimer) clearTimeout(publishTimer); if (metricsTimer) clearInterval(metricsTimer); hibernator?.stop(); vault?.close(); disposableSessions.dispose(); });

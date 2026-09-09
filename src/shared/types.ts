@@ -9,6 +9,10 @@ export interface Tab {
 }
 export interface Entry { id: string; url: string; title: string; time: number }
 export interface Workspace { id: string; name: string; lastActiveTabId?: string }
+export interface ExtensionRegistration {
+  id: string; directory: string; name: string; version: string;
+  permissions: string[]; hosts: string[]; enabled: boolean; error?: string;
+}
 export interface BrowserState {
   tabs: Tab[]; activeId: string; bookmarks: Entry[]; history: Entry[];
   storage: 'encrypted' | 'memory'; storageMessage: string; vaultLocked: boolean;
@@ -16,7 +20,8 @@ export interface BrowserState {
   sidebarCollapsed?: boolean;
   split?: { leftId: string; rightId: string };
   workspaces: Workspace[]; activeWorkspaceId: string;
-  theme: 'system' | 'dark' | 'light'; panel: 'none' | 'bookmarks' | 'history' | 'privacy' | 'storage' | 'workspaces' | 'commands';
+  extensions?: ExtensionRegistration[]; extensionsAvailable?: boolean;
+  theme: 'system' | 'dark' | 'light'; panel: 'none' | 'bookmarks' | 'history' | 'privacy' | 'storage' | 'workspaces' | 'commands' | 'extensions';
 }
 export type Command =
   | { type: 'navigate'; url: string }
@@ -31,6 +36,8 @@ export type Command =
   | { type: 'rename-workspace'; id: string; name: string }
   | { type: 'switch-workspace'; id: string }
   | { type: 'theme'; value: BrowserState['theme'] }
+  | { type: 'load-extension' }
+  | { type: 'toggle-extension' | 'remove-extension'; id: string }
   | { type: 'panel'; value: BrowserState['panel'] };
 export interface AstraAPI {
   snapshot(): Promise<BrowserState>;

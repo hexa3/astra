@@ -3,6 +3,8 @@
 Use Command on macOS or Control on Windows/Linux where listed as Cmd/Ctrl.
 These shortcuts are handled by the browser even when a webpage has focus.
 
+Extensions can be opened from the command bar by typing “extensions”. Loading an unpacked folder uses the operating-system picker and permission-review dialog; both are keyboard accessible.
+
 | Action | Shortcut |
 | --- | --- |
 | Address or search | Cmd/Ctrl+L |

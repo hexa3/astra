@@ -6,6 +6,7 @@
   import WorkspacePanel from './WorkspacePanel.svelte';
   import CommandPalette from './CommandPalette.svelte';
   import TabList from './TabList.svelte';
+  import ExtensionsPanel from './ExtensionsPanel.svelte';
   import { sidebarWidth } from '../shared/layout';
   let state: BrowserState | undefined;
   let address = '';
@@ -93,6 +94,7 @@
       <button class="library-button" aria-label="Bookmarks" title="Bookmarks" class:selected={state?.panel === 'bookmarks'} onclick={() => { search = ''; run({ type: 'panel', value: state?.panel === 'bookmarks' ? 'none' : 'bookmarks' }); }}><Icon name="bookmark" /><span>Bookmarks</span></button>
       <button class="library-button" aria-label="History" title="History" class:selected={state?.panel === 'history'} onclick={() => { search = ''; run({ type: 'panel', value: state?.panel === 'history' ? 'none' : 'history' }); }}><Icon name="history" /><span>History</span></button>
       <button class="library-button" aria-label="Behind the page" title="Behind the page" class:selected={state?.panel === 'privacy'} onclick={() => run({ type: 'panel', value: state?.panel === 'privacy' ? 'none' : 'privacy' })}><Icon name="shield" /><span>Behind the page</span></button>
+      <button class="library-button" aria-label="Extensions" title="Extensions" class:selected={state?.panel === 'extensions'} onclick={() => run({ type: 'panel', value: state?.panel === 'extensions' ? 'none' : 'extensions' })}><Icon name="extension" /><span>Extensions</span></button>
       <div class="sidebar-foot"><span>QUIET BY DESIGN</span><button aria-label="Change color theme" title={`Theme: ${state?.theme ?? 'system'}`} onclick={() => run({ type: 'theme', value: state?.theme === 'system' ? 'dark' : state?.theme === 'dark' ? 'light' : 'system' })}><Icon name="sun" /></button></div>
     </div>
   </aside>
@@ -131,6 +133,8 @@
       </section>
     {:else if state?.panel === 'privacy'}
       <PrivacyPanel {state} {tab} {run} />
+    {:else if state?.panel === 'extensions'}
+      <ExtensionsPanel {state} {run} />
     {:else if tab?.error}
       <section class="newtab error-page"><div class="eyebrow">CONNECTION INTERRUPTED</div><h1>This page couldn’t load.</h1><p>{tab.error}</p><p class="muted">{tab.url}</p><button class="primary-action" onclick={() => run({ type: 'reload' })}>Try again<Icon name="reload" /></button></section>
     {:else if !tab?.url}
