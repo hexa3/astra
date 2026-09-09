@@ -32,5 +32,9 @@ void app.whenReady().then(async () => {
   contents.close();
   await new Promise<void>(resolve => server.close(() => resolve()));
   console.log(`PASS: native MV3 content script, background worker and disposable ${process.platform === 'linux' ? 'RAM-backed' : 'temporary'} context`);
-  app.exit(0);
+  // Windows can keep Electron's extension service-worker utility process alive
+  // after app.exit(), even after its session and WebContents are closed. This is
+  // a standalone test executable, so terminate deterministically after the
+  // process exit hook has synchronously erased the disposable profile.
+  process.exit(0);
 }).catch(error => { console.error(error); app.exit(1); });
