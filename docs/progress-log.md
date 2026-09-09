@@ -62,3 +62,7 @@ Added the user-selectable single accent, completed textarea and forced-color foc
 ## 2026-09-09 21:01 GST — Linux 1.0 artifacts verified
 
 Fast-forwarded the complete feature branch to main after `npm run verify` passed 30 unit tests, 14 Electron browser/privacy tests and both native suites; the production dependency audit reports zero vulnerabilities. Built the 1.0.0 AppImage and Debian package. Both the unpacked production executable and the actual AppImage rendered a local page in sandboxed Chromium, honored an isolated packaged profile, included project/font licenses and executed the command bar. SHA-256: AppImage `46529078fb4b776b7c6e617a416479d78f48e6cec9ed4a327d2d86ca49f6e5e0`; Debian `de365152b086a6e58dc92d5f009aced0acefe16f43c8bf6ca793b6b6f1c39278`. The host lacks `dpkg-deb`, so package structure was produced by electron-builder/FPM but not independently queried with Debian tooling. Next: commit this verification record, tag 1.0.0 and push main so native CI can rebuild Windows/macOS artifacts.
+
+## 2026-09-09 21:05 GST — CI input ordering fix
+
+The first 1.0 Linux CI run passed typechecking, all unit tests and 13 of 14 Electron tests, then missed the synthetic Peek hover because the virtual desktop processed the Alt event before the immediately preceding mouse move. Product behavior had passed locally; the test now focuses the native page and leaves explicit event-loop boundaries between pointer movement and Alt input, matching physical input ordering. The candidate remains blocked until the replacement CI run is green.

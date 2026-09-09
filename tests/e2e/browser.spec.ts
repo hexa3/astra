@@ -107,8 +107,14 @@ test('Alt-hover opens a real link preview and releasing Alt closes it', async ()
     await app.evaluate(async ({ webContents }) => {
       const page = webContents.getAllWebContents().find(wc => wc.getURL().startsWith('http://127.0.0.1'))!;
       const rect = await page.executeJavaScript(`(() => { const r = document.querySelector('a').getBoundingClientRect(); return {x:r.x+r.width/2,y:r.y+r.height/2}; })()`);
+      page.focus();
+      page.sendInputEvent({ type: 'mouseMove', x: Math.round(rect.x) - 2, y: Math.round(rect.y) });
+      await new Promise(resolve => setTimeout(resolve, 150));
       page.sendInputEvent({ type: 'mouseMove', x: Math.round(rect.x), y: Math.round(rect.y) });
+      await new Promise(resolve => setTimeout(resolve, 150));
       page.sendInputEvent({ type: 'keyDown', keyCode: 'Alt', modifiers: ['alt'] });
+      await new Promise(resolve => setTimeout(resolve, 50));
+      page.sendInputEvent({ type: 'mouseMove', x: Math.round(rect.x) + 1, y: Math.round(rect.y) });
     });
     await expect(chrome.getByRole('button', { name: 'Open preview in new tab' })).toBeVisible();
     await expect.poll(() => app.evaluate(({ webContents }) => webContents.getAllWebContents().some(wc => wc.getURL().endsWith('/second')))).toBe(true);
