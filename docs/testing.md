@@ -47,8 +47,10 @@ validation. Tests verify:
 https://example.com. The default tests need no external response; requests to
 the tracker fixture hostname are blocked before reaching the network.
 
-Previously verified on native CI: Windows/macOS runtime and installer smoke
-behavior. Still not verified: broad manual screen-reader operation, broad
+Verified on native CI for the 1.0 release: Windows x64 and macOS x64/arm64
+source behavior, native packaging and packaged executable smoke checks. The
+evidence is retained in [run 34382766909](https://github.com/hexa3/astra/actions/runs/34382766909).
+Still not verified: broad manual screen-reader operation, broad
 website/extension compatibility, all possible
 Chromium background services, crash recovery under every disk failure. A passing
 test suite does not establish those claims.
