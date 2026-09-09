@@ -75,3 +75,7 @@ Peek listens to the remote `WebContents` target-URL event rather than injecting 
 ## 19. Persist one validated user accent — 2026-09-09
 
 Astra retains the strict monochrome-plus-one-accent system while allowing the user to recolor that single functional token from the resource panel. The IPC boundary accepts only six-digit hexadecimal colors, normalizes case, and stores the choice inside the same encrypted vault as other browser preferences. The accent continues to serve focus, active-state and critical-error roles rather than decorative backgrounds. Native color input labeling, explicit textarea focus rings, reduced-motion handling and forced-color focus styles keep the customization from weakening keyboard or high-contrast accessibility.
+
+## 20. Call 1.0 a complete product slice, not universal compatibility — 2026-09-09
+
+Version 1.0 denotes the six user outcomes in the build directive and a packaged, tested browser—not completion of an evergreen browser ecosystem. The release includes explicit macOS/Windows/Linux build commands and native-runner packaging checks, but unsigned/unnotarized binaries remain plainly labeled. It names unpacked MV3 support rather than claiming Chrome Web Store parity, a small local tracker baseline rather than comprehensive blocking, automated accessibility coverage rather than manual certification, and extractive local assistance rather than autonomous agents. Shipping these constraints in the README and release notes protects the project's defining transparency better than inflating the feature list.

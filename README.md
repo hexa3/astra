@@ -1,59 +1,71 @@
 # Astra
 
-A quiet, open browser. Local by default. Yours by design.
+**A quiet, open browser. Local by default. Yours by design.**
 
-Astra's own source is MIT-licensed. Bundled components keep their respective
-licenses; the Doto font is distributed under the [SIL Open Font License](LICENSES/Doto-OFL.txt).
-Packages include these notices under `resources/licenses` alongside Electron's
-own license files.
+Astra is a desktop browser built with Electron, Chromium, TypeScript and Svelte. It combines an austere black/white/one-accent interface with browser internals that are visible rather than hidden: tracker and request counts, renderer memory, sleeping tabs, storage state and permission policy all live in the interface.
 
-Astra is an MIT-licensed Electron + Svelte browser under active construction.
-It is not yet a stable release. Verified milestones and limitations live in
-[the build log](docs/progress-log.md); architecture lives in
-[decisions](docs/decisions.md).
+Astra is MIT-licensed, has no telemetry or advertising code, makes no background update request, and has no account requirement or paid tier. The Doto chrome font is bundled under the [SIL Open Font License](LICENSES/Doto-OFL.txt); pages retain their own typography.
 
-[Download the Linux alpha](https://github.com/hexa3/astra/releases/tag/v0.2.0).
-It supports real browsing, isolated workspaces, local command search, reordered
-tabs, a compact sidebar, encrypted records and conservative tab hibernation.
-See [release notes](docs/releases/v0.2.0.md) for verification and limitations.
+## What works in 1.0
 
-## Development
+- Sandboxed Chromium pages with address/search, back, forward, reload, tabs and popup-to-tab handling.
+- Vertical keyboard-accessible tabs with drag and keyboard reorder, collapse mode and conservative automatic hibernation.
+- Named workspaces with separate ephemeral website sessions, keyboard switching and encrypted lazy session restore.
+- Local fuzzy command bar across tabs, workspaces, history, bookmarks and browser actions.
+- Two-page split view and Alt-hover native link Peek.
+- Encrypted SQLite history, bookmarks, tab sessions, preferences, Boosts and extension registrations through the OS key store or a user-created passphrase vault.
+- Default basic tracker blocking, cross-site HTTP/document cookie blocking, denied sensitive permissions, Global Privacy Control and no telemetry.
+- A resource/privacy panel with observed request counts, blocked trackers/cookies, real renderer working-set samples and sleeping-tab state.
+- Reviewed unpacked Manifest V3 extensions in disposable runtime sessions, including content scripts and service workers supported by Electron.
+- Exact-hostname CSS/JavaScript Boosts stored locally and executed only in sandboxed page worlds.
+- An optional, dismissible AI sidebar for local extractive summaries and page questions. It makes no network request and requires no model download or account.
+- Dark, light and system themes, a user-selected single accent, reduced-motion behavior, forced-color support, labeled controls and keyboard equivalents for primary actions.
 
-Node.js 24 and a graphical desktop are required. Run `npm ci`, then `npm start`.
-Use `npm run verify` to typecheck, run unit tests, build and exercise the app.
-Linux packages: `npm run package:linux`.
+## Install and run
 
-Current source also accepts `--astra-profile=/absolute/path` to run with a
-separate profile. Each profile has its own instance lock and encrypted vault;
-this option does not enable plaintext storage. Native Windows/macOS packaging
-is being verified in CI and is not yet a published platform-support claim.
+Release artifacts are attached to the [v1.0.0 release](https://github.com/hexa3/astra/releases/tag/v1.0.0) when published. Linux builds provide AppImage and Debian packages. Windows uses NSIS; macOS uses DMG/ZIP. Current community builds are not code-signed or notarized, so each operating system may display an unverified-publisher warning.
 
-[Keyboard controls](docs/keyboard.md) document the current source build,
-including features newer than the downloadable first alpha.
+To run from source, install Node.js 24 and a graphical desktop:
 
-On Arch Linux, electron-builder's bundled Debian packager may require
-`libcrypt.so.1`. You can use your installed Ruby instead: install FPM with
-`gem install --user-install fpm --no-document`, then set `CUSTOM_FPM_PATH` to
-the absolute `bin/fpm` path under `gem environment user_gemhome` when running
-the packaging command. This workaround only affects build tooling.
+```sh
+npm ci
+npm start
+```
 
-## Privacy contract
+Use `--astra-profile=/absolute/path` for an isolated profile. This changes the profile location, not the encryption policy.
 
-No telemetry, analytics SDK, remote font, cloud sync or automatic update request.
-History, bookmarks and session records must be encrypted before persistence.
-Without a secure OS key store, Astra starts in clearly disclosed memory-only
-mode. Click the storage status at the bottom to create or unlock a passphrase
-vault. Use a unique passphrase of at least 12 characters; there is no recovery
-service. Website storage is ephemeral: logins do not currently survive quitting.
-Basic tracker blocking and third-party network-cookie filtering are enabled.
-This is not an anonymity tool; navigating to a site contacts that site.
+## Verify and package
+
+```sh
+npm run verify
+npm run package:linux
+npm run package:mac
+npm run package:win
+```
+
+`verify` typechecks Svelte/TypeScript, runs unit tests, builds production assets, drives real Electron browser/privacy flows, and runs native unload and MV3 worker/content-script tests. Tests use sandboxed pages and disposable profiles; no test disables Chromium's sandbox. See [verification details](docs/testing.md) and [keyboard controls](docs/keyboard.md).
+
+On Arch Linux, electron-builder's bundled Debian packager may require `libcrypt.so.1`. Install FPM with `gem install --user-install fpm --no-document`, then set `CUSTOM_FPM_PATH` to its absolute executable when packaging. This affects build tooling only.
+
+## Privacy model
+
+Astra contacts a site when you navigate to it. It is not an anonymity network and its bundled tracker list is intentionally small, local and reviewable—not a claim of comprehensive ad blocking.
+
+Browser records are encrypted before persistence. Without a secure OS key store, Astra uses memory only until you create or unlock a passphrase vault from the footer. There is no recovery service. Normal website cookies, logins and storage are ephemeral and clear on exit. Extensions require a path-backed Chromium session; Astra uses `/dev/shm` on Linux and a disposable OS temporary directory elsewhere, removes it on orderly exit, and clearly warns when switching session mode clears current logins. A crash can leave temporary extension data for the OS to clean.
+
+The built-in assistant processes capped rendered text locally. No page content is sent to a model provider. Boost JavaScript can read and change its configured site because that is its purpose, but it cannot access Node, Astra's bridge or trusted browser chrome.
+
+## Known limits
+
+- “Load unpacked” is supported; one-click Chrome Web Store installation is not. Electron implements only part of the Chrome extension API surface, and failures are shown rather than hidden.
+- Installers are reproducibly built in CI but are not backed by paid Windows publisher signing, Apple Developer ID signing or notarization.
+- Split layout does not persist or resize yet. Peek is intentionally transient.
+- The assistant is extractive, not generative or agentic; it does not fill forms or take actions.
+- The bundled tracker seed is a privacy baseline, not a substitute for a full maintained filter-list engine.
+- Accessibility has automated keyboard/focus coverage and OS preference support, but broad manual screen-reader certification remains future work.
 
 ## Contributing and governance
 
-Forks and replacement modules are welcome. No contributor agreement or paid tier.
-Open an issue explaining the user problem, then propose a small, tested change.
-Architectural changes require a paragraph in `docs/decisions.md`. Features must
-work, remain keyboard accessible, and disclose their network/storage behavior.
-The initial maintainer reviews changes; formal community governance has not yet
-been established. We will document decisions publicly rather than imply an
-elected governance structure that does not exist.
+Forks and replacement modules are welcome. No contributor agreement, account, monetization gate or proprietary service is required. Open an issue describing the user problem and propose a small tested change. Architectural changes require a rationale in [docs/decisions.md](docs/decisions.md); features must work, remain keyboard accessible, and disclose their network and storage behavior.
+
+The initial maintainer currently reviews changes. Astra does not claim an elected governance body that does not yet exist. The project records decisions publicly and intends to evolve governance with sustained contributors. See the [build log](docs/progress-log.md) for the implementation record.

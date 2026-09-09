@@ -11,7 +11,8 @@ process.once('exit', () => sessions.dispose());
 void app.whenReady().then(async () => {
   if (!RamSessions.supported()) { console.log('SKIP: no supported RAM-backed extension context'); app.exit(0); return; }
   const context = sessions.open('native-fixture');
-  assert.ok(context.storagePath?.startsWith('/dev/shm/astra-extensions-'));
+  assert.ok(context.storagePath);
+  if (process.platform === 'linux') assert.ok(context.storagePath.startsWith('/dev/shm/astra-extensions-'));
   const extension = await context.extensions.loadExtension(join(process.cwd(), 'tests/fixtures/mv3'), { allowFileAccess: false });
   const server = createServer((_request, response) => response.end('<title>Native extension fixture</title><h1>Real page</h1>'));
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -30,6 +31,6 @@ void app.whenReady().then(async () => {
   assert.equal(context.extensions.getAllExtensions().length, 0);
   contents.close();
   await new Promise<void>(resolve => server.close(() => resolve()));
-  console.log('PASS: native MV3 content script, background worker and storage in RAM-backed context');
+  console.log(`PASS: native MV3 content script, background worker and disposable ${process.platform === 'linux' ? 'RAM-backed' : 'temporary'} context`);
   app.exit(0);
 }).catch(error => { console.error(error); app.exit(1); });

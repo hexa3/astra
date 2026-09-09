@@ -38,12 +38,17 @@ validation. Tests verify:
 - Local command-bar ranking, cross-workspace tab selection, executable theme
   and library commands, URL submission, privileged-scheme rejection, Escape,
   and forward/reverse keyboard focus containment.
+- Exact-host Boost CSS/JavaScript, local page summary/question answering, and
+  native Alt-hover Peek creation and teardown.
+- Native unpacked MV3 content scripts, service workers and disposable extension
+  contexts through the second command run by `npm run test:native`.
 
 `npm run test:live` is a separate, explicit network smoke test that renders
 https://example.com. The default tests need no external response; requests to
 the tracker fixture hostname are blocked before reaching the network.
 
-Not yet verified: Windows/macOS runtime or installer behavior, screen-reader
-operation, broad website compatibility, extension compatibility, all possible
+Previously verified on native CI: Windows/macOS runtime and installer smoke
+behavior. Still not verified: broad manual screen-reader operation, broad
+website/extension compatibility, all possible
 Chromium background services, crash recovery under every disk failure. A passing
 test suite does not establish those claims.

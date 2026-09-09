@@ -54,3 +54,7 @@ Per-host CSS/JavaScript Boosts now save in the encrypted vault, enforce exact ac
 ## 2026-09-09 18:50 GST — native link Peek
 
 Holding Alt over a real page link now creates a delayed, sandboxed native preview using Chromium's hover target; releasing Alt destroys it, while trusted controls can close or promote it to a tab. Bounds remain inside the page region alongside collapsed sidebar and AI layouts. An Electron test drives actual native mouse/key input, observes the second page render, and verifies teardown. Next: consolidate the feature branch, audit remaining directive gaps, then package and smoke-test the release candidate.
+
+## 2026-09-09 19:10 GST — 1.0 release candidate prepared
+
+Added the user-selectable single accent, completed textarea and forced-color focus treatment, and restored encrypted theme/accent choices after vault unlock. Version metadata is now 1.0.0; README, changelog and release notes enumerate working behavior and limits without claiming Web Store parity, agentic AI, comprehensive filter coverage or commercial code signing. Native verification now always exercises both unload protection and real MV3 execution. Next: merge the stable branch into main, run the entire release verification, build Linux installers and exercise the packaged Chromium binary before tagging.
