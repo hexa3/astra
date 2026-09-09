@@ -28,7 +28,11 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
       - name: Install desktop test libraries
-        run: npx playwright install-deps chromium
+        run: |
+          # The hosted image adds this unrelated repository; a metadata race in
+          # it must not block installing Ubuntu libraries for Electron.
+          sudo rm -f /etc/apt/sources.list.d/google-chrome.list
+          npx playwright install-deps chromium
       - name: Allow Chromium user namespaces in this disposable runner
         run: |
           if [ -f /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
