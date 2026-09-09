@@ -71,3 +71,7 @@ The optional AI surface is a dismissible right sidebar backed by a small `ModelP
 ## 18. Drive Peek from Chromium's real hover target — 2026-09-09
 
 Peek listens to the remote `WebContents` target-URL event rather than injecting permanent hover listeners into arbitrary sites. Holding Alt over a validated HTTP(S) link starts a 350 ms intent delay and then opens that address in a separate sandboxed `WebContentsView`, inset within the current page bounds and sharing the active workspace session. Releasing Alt, leaving the link, pressing Escape or changing tabs destroys the preview; a trusted toolbar action can promote its committed URL to a normal tab. The preview rejects privileged navigation and popup creation through the same narrow URL policy. Preview requests are not attributed to the underlying tab's counter because doing so would misrepresent which document initiated them.
+
+## 19. Persist one validated user accent — 2026-09-09
+
+Astra retains the strict monochrome-plus-one-accent system while allowing the user to recolor that single functional token from the resource panel. The IPC boundary accepts only six-digit hexadecimal colors, normalizes case, and stores the choice inside the same encrypted vault as other browser preferences. The accent continues to serve focus, active-state and critical-error roles rather than decorative backgrounds. Native color input labeling, explicit textarea focus rings, reduced-motion handling and forced-color focus styles keep the customization from weakening keyboard or high-contrast accessibility.

@@ -162,6 +162,7 @@ function persist(): void {
   vault.set('bookmarks', state.bookmarks);
   vault.set('history', state.history);
   vault.set('theme', state.theme);
+  vault.set('accent', state.accent);
   vault.set('background-limit', state.backgroundLimit);
   vault.set('sidebar-collapsed', !!state.sidebarCollapsed);
   vault.set('extensions', state.extensions);
@@ -442,10 +443,12 @@ async function dispatch(command: Command): Promise<void> {
       state.history = merge(vault.get<Entry[]>('history', []), state.history).slice(0, 2000);
       state.backgroundLimit = vault.get('background-limit', state.backgroundLimit);
       state.sidebarCollapsed = vault.get('sidebar-collapsed', state.sidebarCollapsed ?? false);
+      state.theme = vault.get('theme', state.theme); nativeTheme.themeSource = state.theme;
+      state.accent = vault.get('accent', state.accent ?? '#e5231b');
       state.boosts = [...new Map([...(state.boosts ?? []), ...vault.get<Boost[]>('boosts', [])].map(boost => [boost.domain, boost])).values()];
       const savedExtensions = vault.get<ExtensionRegistration[]>('extensions', []);
       state.extensions ??= [];
-      for (const extension of savedExtensions) if (!state.extensions.some(item => item.id === extension.id)) state.extensions.push(extension);
+      for (const extension of savedExtensions) if (!state.extensions.some(item => item.id === extension.id)) state.extensions.push({ ...extension, enabled: false, error: extension.enabled ? 'Review and enable this extension after unlocking.' : extension.error });
       const savedWorkspaces = restoreWorkspaces(vault.get('workspaces', []));
       state.workspaces = [...new Map([...state.workspaces, ...savedWorkspaces].map(workspace => [workspace.id, workspace])).values()];
       for (const tab of restoreSavedTabs(vault.get('session', []), state.workspaces)) {
@@ -508,6 +511,7 @@ async function dispatch(command: Command): Promise<void> {
     case 'remove-bookmark': state.bookmarks = state.bookmarks.filter(item => item.id !== command.id); persist(); break;
     case 'clear-history': state.history = []; persist(); break;
     case 'theme': state.theme = command.value; nativeTheme.themeSource = command.value; persist(); break;
+    case 'accent': state.accent = command.value; persist(); break;
     case 'load-extension': await chooseExtension(); break;
     case 'toggle-extension': {
       const extension = state.extensions?.find(item => item.id === command.id);
@@ -566,7 +570,7 @@ app.whenReady().then(async () => {
   if (!primaryInstance) return;
   vault = new Vault(join(app.getPath('userData'), 'vault'), { useKeychain: !testProfile });
   const localModel = modelProviders.get('local-extractive')!;
-  state = { tabs: [], activeId: '', bookmarks: vault.get<Entry[]>('bookmarks', []), history: vault.get<Entry[]>('history', []), storage: vault.mode, storageMessage: vault.message, vaultLocked: vault.locked, theme: vault.get('theme', 'system'), panel: 'none', backgroundLimit: vault.get('background-limit', 6), workspaces: restoreWorkspaces(vault.get('workspaces', [])), activeWorkspaceId: DEFAULT_WORKSPACE.id, extensions: vault.get<ExtensionRegistration[]>('extensions', []), extensionsAvailable: RamSessions.supported(), boosts: vault.get<Boost[]>('boosts', []), ai: { open: false, busy: false, provider: localModel.id, disclosure: localModel.disclosure } };
+  state = { tabs: [], activeId: '', bookmarks: vault.get<Entry[]>('bookmarks', []), history: vault.get<Entry[]>('history', []), storage: vault.mode, storageMessage: vault.message, vaultLocked: vault.locked, theme: vault.get('theme', 'system'), accent: vault.get('accent', '#e5231b'), panel: 'none', backgroundLimit: vault.get('background-limit', 6), workspaces: restoreWorkspaces(vault.get('workspaces', [])), activeWorkspaceId: DEFAULT_WORKSPACE.id, extensions: vault.get<ExtensionRegistration[]>('extensions', []), extensionsAvailable: RamSessions.supported(), boosts: vault.get<Boost[]>('boosts', []), ai: { open: false, busy: false, provider: localModel.id, disclosure: localModel.disclosure } };
   const savedActiveWorkspace = vault.get('active-workspace', state.workspaces[0].id);
   state.sidebarCollapsed = vault.get('sidebar-collapsed', false);
   state.activeWorkspaceId = state.workspaces.some(workspace => workspace.id === savedActiveWorkspace) ? savedActiveWorkspace : state.workspaces[0].id;

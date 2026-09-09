@@ -42,6 +42,7 @@
     if (current && (current.id !== previousId || !addressFocused)) address = current.url;
     previousId = current?.id ?? '';
     document.documentElement.dataset.theme = next.theme;
+    document.documentElement.style.setProperty('--accent', next.accent ?? '#e5231b');
   }
   function focusAddress() { addressInput?.focus(); addressInput?.select(); }
   onMount(() => {

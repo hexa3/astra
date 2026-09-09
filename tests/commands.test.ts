@@ -35,3 +35,8 @@ test('AI questions are bounded, trimmed and explicitly typed', () => {
   assert.deepEqual(validateCommand({type: 'ai-ask', question: '  what changed?  '}), {type: 'ai-ask', question: 'what changed?'});
   for (const question of ['', '   ', 4, 'x'.repeat(1001)]) assert.throws(() => validateCommand({type: 'ai-ask', question}));
 });
+
+test('accent colors accept only an explicit six-digit hex value', () => {
+  assert.deepEqual(validateCommand({type: 'accent', value: '#E5231B'}), {type: 'accent', value: '#e5231b'});
+  for (const value of ['red', '#fff', '#12345678', '#gg0000', 5]) assert.throws(() => validateCommand({type: 'accent', value}));
+});

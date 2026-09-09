@@ -27,6 +27,7 @@ export interface BrowserState {
   ai?: AIState;
   peek?: { url: string; title: string; loading: boolean };
   theme: 'system' | 'dark' | 'light'; panel: 'none' | 'bookmarks' | 'history' | 'privacy' | 'storage' | 'workspaces' | 'commands' | 'extensions' | 'boosts';
+  accent?: string;
 }
 export type Command =
   | { type: 'navigate'; url: string }
@@ -41,6 +42,7 @@ export type Command =
   | { type: 'rename-workspace'; id: string; name: string }
   | { type: 'switch-workspace'; id: string }
   | { type: 'theme'; value: BrowserState['theme'] }
+  | { type: 'accent'; value: string }
   | { type: 'load-extension' }
   | { type: 'toggle-extension' | 'remove-extension'; id: string }
   | { type: 'save-boost'; domain: string; css: string; js: string; enabled: boolean }

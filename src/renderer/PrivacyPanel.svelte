@@ -24,6 +24,7 @@
       </select> live in the background.
       <p class="muted">Older pages sleep and reload on return. Audio, edited forms and pages requesting to stay open are protected. {state.tabs.filter(tab => tab.suspended).length} sleeping now.</p>
     </dd></div>
+    <div><dt>Interface accent</dt><dd><label class="accent-picker">Single highlight color <input type="color" aria-label="Interface accent color" value={state.accent ?? '#e5231b'} onchange={event => run({ type: 'accent', value: event.currentTarget.value })} /></label></dd></div>
     <div><dt>Tracker protection</dt><dd>On · bundled basic host list</dd></div>
     <div><dt>Third-party cookies</dt><dd>Blocked · HTTP headers and document access</dd></div>
     <div><dt>Site permissions</dt><dd>Camera, microphone, location and notifications denied</dd></div>
