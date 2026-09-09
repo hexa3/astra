@@ -31,12 +31,7 @@ jobs:
         run: |
           # The hosted image adds this unrelated repository; a metadata race in
           # it must not block installing Ubuntu libraries for Electron.
-          for source_file in /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; do
-            [ -f "$source_file" ] || continue
-            if grep -q 'dl.google.com/linux/chrome-stable' "$source_file"; then
-              sudo sed -i '\|dl.google.com/linux/chrome-stable|d' "$source_file"
-            fi
-          done
+          sudo rm -f /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google-chrome.sources
           npx playwright install-deps chromium
       - name: Allow Chromium user namespaces in this disposable runner
         run: |
