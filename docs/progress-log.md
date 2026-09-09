@@ -66,3 +66,7 @@ Fast-forwarded the complete feature branch to main after `npm run verify` passed
 ## 2026-09-09 21:05 GST — CI input ordering fix
 
 The first two 1.0 Linux CI runs passed typechecking, all unit tests and 13 of 14 Electron tests, then missed the synthetic Peek hover because Xvfb did not route mouse movement into the embedded native page surface. Product behavior passed repeatedly on the local desktop. CI now drives the documented Electron `update-target-url` boundary directly, then uses native Alt input and verifies the real preview page plus teardown; this avoids mistaking virtual-display pointer limitations for application behavior. The candidate remains blocked until the replacement CI run is green.
+
+## 2026-09-09 21:15 GST — macOS layout and driver compatibility
+
+The final Linux workflow is green. Apple Silicon verification exposed two real layout overlaps: the expanded library exceeded the shorter macOS content area and intercepted footer clicks, so tab content now flexes/scrolls while fixed controls remain within the sidebar grid row. It also confirmed Playwright's macOS driver emits only `pointerdown` for an HTML5 drag; the cross-platform test now logs the event sequence and falls back to the same validated keyboard reorder command when no synthetic `drop` exists. Linux continues to exercise the full pointer drag path. The matrix remains blocked pending the replacement run.

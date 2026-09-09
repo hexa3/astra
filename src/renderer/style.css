@@ -404,6 +404,7 @@ p {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  overflow: hidden;
   background: color-mix(in srgb, var(--surface) 90%, transparent);
   backdrop-filter: blur(16px);
 }
@@ -419,6 +420,7 @@ p {
 .tabs {
   overflow: auto;
   min-height: 40px;
+  flex: 1 1 auto;
 }
 .tab-row {
   display: flex;
@@ -478,6 +480,7 @@ p {
   color: var(--muted);
   margin-top: 10px;
   min-height: 40px;
+  flex-shrink: 0;
 }
 .new-tab .key-hint {
   margin-left: auto;
@@ -485,6 +488,7 @@ p {
 .sidebar-bottom {
   margin-top: auto;
   padding-top: 30px;
+  flex-shrink: 0;
 }
 .compact-index {
   display: none;
