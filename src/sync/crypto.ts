@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-import { createHash, hkdfSync, randomBytes } from 'node:crypto';
+import { createHash, createHmac, hkdfSync, randomBytes } from 'node:crypto';
 import { deriveKey, seal, unseal } from '../core/crypto';
 
 export const SYNC_PROTOCOL_VERSION = 1;
@@ -9,6 +9,7 @@ export interface SyncKeys {
   namespace: string;
   authToken: string;
   encryptionKey: Buffer;
+  verifier: string;
 }
 export interface SyncPayload {
   bookmarks: unknown[];
@@ -37,7 +38,8 @@ export async function deriveSyncKeys(passphrase: string, realm: string): Promise
     const authKey = Buffer.from(hkdfSync('sha256', master, salt, 'astra-sync-auth-v1', 32));
     const encryptionKey = Buffer.from(hkdfSync('sha256', master, salt, 'astra-sync-content-v1', 32));
     const namespace = createHash('sha256').update(authKey).digest('hex');
-    return { namespace, authToken: base64url(authKey), encryptionKey };
+    const verifier = base64url(createHmac('sha256', encryptionKey).update('astra-sync-verifier-v1').digest());
+    return { namespace, authToken: base64url(authKey), encryptionKey, verifier };
   } finally { master.fill(0); }
 }
 
