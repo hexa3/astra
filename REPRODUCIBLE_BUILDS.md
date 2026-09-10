@@ -2,7 +2,9 @@
 
 ## What is reproducible today
 
-The release asset named `astra-<version>-linux-x64-reproducible.tar.gz` is a complete Linux x64 browser: it contains Astra's production application, native SQLite module, Electron/Chromium runtime, licenses, locales, and executable. Two clean builders must produce the exact same SHA-256 digest, byte for byte. This is not a source archive or a checksum supplied by the same opaque build server.
+The release assets named `astra-<version>-default-linux-x64-reproducible.tar.gz` and `astra-<version>-minimal-linux-x64-reproducible.tar.gz` are complete Linux x64 browsers: each contains Astra's production application, native SQLite module, Electron/Chromium runtime, licenses, locales, and executable. Two clean builders must reproduce each named artifact with the exact same SHA-256 digest, byte for byte. These are not source archives or checksums supplied by the same opaque build server.
+
+The two official variants are assembled from one electron-builder output. Their `astra-core` executables are byte-identical; only the tiny launcher selecting the default or minimal packaged shell differs. See [VARIANTS.md](VARIANTS.md).
 
 AppImage, Debian, NSIS, DMG, and macOS ZIP packages remain install conveniences with native execution tests. They are **not currently claimed as bit-reproducible** because their packaging/signing containers include metadata Astra does not yet control across hosts. Their hashes prove download integrity only. The verified tarball is the release-blocking reproducible binary for supported Linux x64 systems.
 
@@ -22,14 +24,15 @@ sha256sum --check *.sha256
 Download the identically named `.tar.gz` from that GitHub release and compare it directly:
 
 ```sh
-sha256sum astra-*-linux-x64-reproducible.tar.gz /path/to/downloaded/astra-*-linux-x64-reproducible.tar.gz
-cmp astra-*-linux-x64-reproducible.tar.gz /path/to/downloaded/astra-*-linux-x64-reproducible.tar.gz
+sha256sum --check *.sha256
+cmp astra-2.0.0-default-linux-x64-reproducible.tar.gz /path/to/downloaded/astra-2.0.0-default-linux-x64-reproducible.tar.gz
+cmp astra-2.0.0-minimal-linux-x64-reproducible.tar.gz /path/to/downloaded/astra-2.0.0-minimal-linux-x64-reproducible.tar.gz
 ```
 
 Both hashes must match and `cmp` must print nothing. To run the rebuilt browser:
 
 ```sh
-tar -xzf astra-*-linux-x64-reproducible.tar.gz
+tar -xzf astra-2.0.0-<default-or-minimal>-linux-x64-reproducible.tar.gz
 ./astra/astra-browser
 ```
 
@@ -42,13 +45,13 @@ Chromium's normal Linux sandbox requirements still apply. Do not add `--no-sandb
 - Vite/esbuild production output does not embed build time or checkout path.
 - `SOURCE_DATE_EPOCH` is the tagged Git commit timestamp, not wall-clock time.
 - GNU tar receives a sorted path list, one timestamp for every member, numeric `0:0` ownership, and a fixed archive format. `gzip -n -9` omits filename and timestamp metadata.
-- The checksum is produced only after the runnable archive is complete.
+- Each checksum is produced only after its runnable archive is complete.
 
 The Docker image itself is not a release artifact and need not have a stable image ID; Docker layer timestamps do not enter the canonical tarball.
 
 ## Independent CI evidence and release blocking
 
-`.github/workflows/reproducible.yml` builds the artifact on two separate clean GitHub runners and fails unless every archive byte and emitted manifest match. On a published-release event, it also downloads the public asset and compares it with the source rebuild.
+`.github/workflows/reproducible.yml` builds both variants on two separate clean GitHub runners and fails unless every archive byte and emitted manifest match. On a published-release event, it also downloads both public assets and compares each with the corresponding source rebuild.
 
 Releases use the manual `Verify and publish reproducible release` workflow. Given an existing semantic-version tag, two independent jobs rebuild it. The publish job cannot run unless their bytes match; only that final job receives `contents: write`, uploads the verified result to a draft, and then publishes it. A maintainer cannot obtain a green result by supplying an expected hash.
 

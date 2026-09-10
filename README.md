@@ -2,13 +2,20 @@
 
 **A quiet, open browser. Local by default. Yours by design.**
 
-Astra is a desktop browser built with Electron, Chromium, TypeScript and Svelte. It combines an austere black/white/one-accent interface with browser internals that are visible rather than hidden: tracker and request counts, renderer memory, sleeping tabs, storage state and permission policy all live in the interface.
+Astra is a desktop browser built with Electron, Chromium, TypeScript and Svelte. Its “Linux of browsers” claim rests on eight checkable mechanisms:
 
-Astra is licensed under the file-level copyleft [Mozilla Public License 2.0](LICENSE), has no telemetry or advertising code, makes no background update request, and has no account requirement or paid tier. Distributed modifications to Astra's covered source files must remain available under MPL 2.0; see the license itself for the exact terms. The Doto chrome font is bundled separately under the [SIL Open Font License](LICENSES/Doto-OFL.txt); pages retain their own typography.
+1. **Guaranteed-open covered code:** the [MPL 2.0 license](LICENSE) requires distributed modifications to Astra's covered files to remain available under MPL, while allowing practical larger works and forks.
+2. **Reproducible binaries:** two clean builders must produce byte-identical runnable Linux archives before publication; [rebuild and compare them yourself](REPRODUCIBLE_BUILDS.md).
+3. **Core/shell boundary:** privileged browsing and security live behind the stable [Core API 2.0](CORE_API.md), with import and runtime authorization tests.
+4. **Config as code:** reviewed TOML under the platform config directory and the offline [`astractl` CLI](CONFIGURATION.md) make settings, extensions, and workspace startup definitions diffable and scriptable without exposing secrets.
+5. **Identity-free sync:** the bundled [self-hostable E2EE server and client](SYNC.md) require no Astra account, email, default cloud, or server-side content key.
+6. **Conflict-free governance and funding:** public [governance](GOVERNANCE.md) and [funding rules](FUNDING.md) exclude ads, search placement, data revenue, and paid control while recording the project's present bootstrap status honestly.
+7. **Official variants:** the full default and sparse minimal [release variants](VARIANTS.md) launch different shells on byte-identical packaged core executables.
+8. **Standards discipline:** a permanent [policy](STANDARDS.md), machine-checked [surface audit](docs/standards-audit.json), and public [proposal staging area](docs/standards-proposals/README.md) prohibit quiet Astra-only web APIs.
 
-Astra's permanent [standards policy](STANDARDS.md) forbids proprietary browser APIs on ordinary web pages. A machine-checked [surface audit](docs/standards-audit.json) covers Boosts, resource reporting, local AI, Peek, the shell API, and sync; remote pages receive neither Astra's privileged bridge nor a preload script.
+The [Phase 2 retrospective](docs/decisions.md#phase-2-retrospective--v200) distinguishes what v2 proves today from work that remains aspirational. Astra has no telemetry or advertising code, makes no background update request, and has no account requirement or paid tier. The Doto chrome font is bundled separately under the [SIL Open Font License](LICENSES/Doto-OFL.txt); pages retain their own typography.
 
-## What works in 1.0
+## What works in 2.0
 
 - Sandboxed Chromium pages with address/search, back, forward, reload, tabs and popup-to-tab handling.
 - Vertical keyboard-accessible tabs with drag and keyboard reorder, collapse mode and conservative automatic hibernation.
@@ -28,7 +35,7 @@ Astra's permanent [standards policy](STANDARDS.md) forbids proprietary browser A
 
 ## Install and run
 
-Release artifacts are attached to the [v1.0.0 release](https://github.com/hexa3/astra/releases/tag/v1.0.0) when published. Linux builds provide AppImage and Debian packages. Windows uses NSIS; macOS uses DMG/ZIP. Current community builds are not code-signed or notarized, so each operating system may display an unverified-publisher warning.
+The [v2.0.0 release](https://github.com/hexa3/astra/releases/tag/v2.0.0) publishes separately downloadable default and minimal reproducible Linux x64 variants with individual SHA-256 manifests. Windows uses NSIS; macOS uses DMG/ZIP; those native installers currently carry the default shell and remain tested but non-reproducible conveniences. Community builds are not code-signed or notarized, so each operating system may display an unverified-publisher warning.
 
 To run from source, install Node.js 24 and a graphical desktop:
 

@@ -136,3 +136,11 @@ The exact sync branch commit `f086970` passed Linux browser and non-root contain
 ## 2026-09-10 20:34 GST — web-platform boundary enforced
 
 Audited Boosts, the resource/privacy panel, local AI, Peek, Core API IPC, and sync. All are browser-chrome or service mechanisms and expose no Astra-only surface to websites, so the honest standards outcome is no invented proposal for this release. Normal tabs and Peek now share a single exported no-preload sandbox policy; unit tests reject page views that bypass it, any second context-bridge exposure, or an incomplete machine-readable audit. The focused source gate passes 56 unit/security/architecture tests with zero type diagnostics. Next: exercise the complete Electron and native suites, merge and tag the four-hour block, then package official variants from the shared core.
+
+## 2026-09-10 20:38 GST — v1.20.0 standards block green
+
+The standards branch passed Linux browser and container run `34502529484`, independent byte-reproducibility run `34502529825`, and the code-changing commit passed native Windows x64/macOS arm64/macOS x64 run `34502181294`. It was fast-forwarded to `main` and tagged `v1.20.0`. Work moved to `hour21-official-variants`.
+
+## 2026-09-10 20:43 GST — two packaged variants launch one core
+
+The release packager now invokes electron-builder once and creates separate default/minimal canonical archives. Both local artifacts launched through their own wrapper, reported the expected shell through Core API 2.0, rendered a real HTTP page without Node or the Astra bridge, and contained project/font licenses. Direct `cmp` confirmed their `astra-core` executables are byte-identical. The initial minimal smoke asserted visual visibility on an option inside a closed native select; attached-state verification now models that control correctly and passes. Application metadata is now 2.0.0. Next: complete the public pillar/limitation record, rerun independent variant builds, then tag and publish only after every gate is green.

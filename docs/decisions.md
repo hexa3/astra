@@ -131,3 +131,24 @@ The browser writes only endpoint, random Realm, local device label, and a passph
 ## 33. Browser features do not become Astra web APIs — 2026-09-10
 
 Boosts, resource reporting, local AI, Peek, Core API IPC, and sync are browser-chrome or service surfaces. None requires a website-visible primitive, so none justifies a W3C/WHATWG proposal today. Tabs and Peek share one exported web-preferences policy with no preload, and structural tests reject alternate construction or context-bridge exposure. The machine-readable inventory is mandatory for future custom surfaces. If a genuinely novel website-facing primitive becomes necessary, Astra will publish interoperability, privacy, threat and tentative specification work before enabling it by default rather than shipping a vendor-only API.
+
+## 34. Official variants are fixed launchers over one packaged core — 2026-09-10
+
+The reproducible build invokes electron-builder once, renames that result's executable to `astra-core`, then creates default and minimal archives whose only deliberate executable difference is a small audited launcher selecting an allowlisted shell. This produces separately downloadable products without maintaining separate privileged implementations. CI compares both named artifacts across independent runners; packaged smoke tests require each to report its expected Core API shell and render an isolated real page. Native Windows/macOS installers remain default-shell distributions until variant-specific installer identity and signing can be made equally honest.
+
+# Phase 2 retrospective — v2.0.0
+
+This table is the release claim boundary. “Verified now” names evidence present in the tagged public tree; “Still aspirational” is not represented as shipped.
+
+| Pillar | Verified now in v2.0.0 | Still aspirational |
+| --- | --- | --- |
+| 1. Guaranteed-open covered code | Unmodified MPL 2.0 text, SPDX identifiers, provenance audit, and file-level copyleft for distributed modifications to covered files | MPL does not force every separate file in a larger work to become open; no license can literally prevent every private or noncompliant fork |
+| 2. Reproducible builds | Digest-pinned environment; canonical runnable Linux x64 default/minimal archives; two-builder byte gate; public-asset comparison | AppImage, Debian, NSIS, DMG, macOS ZIP, signatures, and notarization are not yet byte-reproducible |
+| 3. Core/userspace split | Core API 2.0, versioned IPC, exact-frame authorization, reciprocal import tests, default and independent minimal Svelte shells | Compatibility adapters have not yet been tested across a future breaking API release; Chromium/Electron itself remains upstream infrastructure |
+| 4. Config and CLI | Atomic validated TOML plus offline `astractl` operations for configuration, reviewed extensions, and workspaces | Live-process control and private history/bookmark scripting are deliberately absent; broad extension-store compatibility is not claimed |
+| 5. Identity-free sync | Self-hostable non-root Docker server, no account/default cloud, separated auth/content keys, opaque storage, two-client and real-Electron tests | Automatic conflict-free merges, rollback transparency, multi-server replication, and an audited third-party cryptographic protocol remain future work |
+| 6. Conflict-free funding | Protected charter bans ads, search placement, data monetization, paid control, and privacy-weakening support terms; treasury starts publicly at USD 0 | Astra is still unincorporated with one bootstrap steward; no elected council, approved legal recipient, donation intake, grant, or support contract exists yet |
+| 7. Official variants | Separately downloadable default/minimal Linux x64 archives have byte-identical cores and meaningfully different tested shells | Separate native-platform variant installers and a privacy-max policy variant are not shipped |
+| 8. Standards discipline | Permanent policy, machine-readable complete audit, no-preload page invariant, runtime site isolation checks, public proposal staging rules | No proposal is currently warranted; participation in a standards venue will begin only if a genuinely novel web primitive is proposed |
+
+The v2.0.0 release therefore proves the mechanisms that code and public process can establish now, while declining to claim an incorporated foundation, universally reproducible native installer, formal external cryptographic audit, or standards submission that does not yet exist.

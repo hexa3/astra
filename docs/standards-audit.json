@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "auditedRelease": "v1.20.0",
+  "auditedRelease": "v2.0.0",
   "policy": "Astra does not expose browser-only JavaScript APIs to web content.",
   "surfaces": [
     {
