@@ -13,7 +13,8 @@ Astra is licensed under the file-level copyleft [Mozilla Public License 2.0](LIC
 - Named workspaces with separate ephemeral website sessions, keyboard switching and encrypted lazy session restore.
 - Local fuzzy command bar across tabs, workspaces, history, bookmarks and browser actions.
 - Two-page split view and Alt-hover native link Peek.
-- Encrypted SQLite history, bookmarks, tab sessions, preferences, Boosts and extension registrations through the OS key store or a user-created passphrase vault.
+- Encrypted SQLite history, bookmarks, live tab sessions and Boosts through the OS key store or a user-created passphrase vault.
+- Versioned TOML settings, workspace/session definitions and extension declarations, plus the non-interactive `astractl` CLI for dotfiles and scripts.
 - Default basic tracker blocking, cross-site HTTP/document cookie blocking, denied sensitive permissions, Global Privacy Control and no telemetry.
 - A resource/privacy panel with observed request counts, blocked trackers/cookies, real renderer working-set samples and sleeping-tab state.
 - Reviewed unpacked Manifest V3 extensions in disposable runtime sessions, including content scripts and service workers supported by Electron.
@@ -42,6 +43,16 @@ npm start -- --astra-shell=minimal
 ```
 
 Its one horizontal bar has no sidebar or command palette; it still performs real navigation and tab operations. The stable contract and third-shell guide are in [CORE_API.md](CORE_API.md).
+
+Review or script the credential-free config after building:
+
+```sh
+npm exec -- astractl config dump
+npm exec -- astractl workspace create "Research"
+npm exec -- astractl extension install /absolute/path/to/extension
+```
+
+The schema, location, complete command list, safety boundary and version-control workflow are in [CONFIGURATION.md](CONFIGURATION.md). History, bookmarks, current tabs, Boosts, credentials and encryption keys do not enter this directory.
 
 ## Verify and package
 
