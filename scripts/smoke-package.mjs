@@ -25,7 +25,8 @@ try {
   if (!readFileSync(join(runtime.resources, 'licenses', 'ASTRA-MPL-2.0.txt'), 'utf8').includes('Mozilla Public License Version 2.0')) throw new Error('Astra license is missing.');
   await chrome.getByRole('textbox', { name: 'Address or search' }).fill(origin);
   await chrome.getByRole('textbox', { name: 'Address or search' }).press('Enter');
-  await chrome.getByRole('tab', { name: 'Packaged browsing check' }).waitFor();
+  if (expectedVariant === 'default') await chrome.getByRole('tab', { name: 'Packaged browsing check' }).waitFor();
+  else await chrome.getByRole('option', { name: 'Packaged browsing check' }).waitFor({ state: 'attached' });
   const page = await app.evaluate(async ({ webContents }) => {
     const contents = webContents.getAllWebContents().find(contents => contents.getURL().startsWith('http:'));
     return contents.executeJavaScript('({body:document.body.innerText,node:typeof require,bridge:typeof window.astra})');
