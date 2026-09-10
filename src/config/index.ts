@@ -129,7 +129,7 @@ function parseWorkspaces(raw: unknown): WorkspacesConfig {
     const workspace = object(item, `workspace ${index + 1}`);
     return {
       id: identifier(workspace.id, `workspace ${index + 1} id`),
-      name: text(workspace.name, `workspace ${index + 1} name`, 80),
+      name: text(workspace.name, `workspace ${index + 1} name`, 60),
       startupPages: list(workspace.startup_pages, `workspace ${index + 1} startup_pages`).map((page, pageIndex) => safeStartupURL(page, `workspace ${index + 1} startup page ${pageIndex + 1}`)),
     };
   });

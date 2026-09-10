@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 import { app, BrowserWindow, WebContentsView, ipcMain, Menu, session, nativeTheme, dialog } from 'electron';
 import type { IpcMainInvokeEvent, WebContents } from 'electron';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
@@ -22,6 +22,7 @@ import { modelProviders, type PageDocument } from './ai';
 import { CORE_API_VERSION, CORE_COMMAND_TYPES, type Boost, type BrowserState, type Command, type Entry, type ExtensionRegistration, type ShellVariant, type Tab } from './api';
 import { CORE_CHANNELS } from './protocol';
 import { shellArgument } from './shell';
+import { ConfigStore, portableConfigPath, resolveConfigPath, type PlainConfig } from '../config/index';
 
 app.setName('Astra');
 const testProfile = !app.isPackaged ? process.env.ASTRA_TEST_PROFILE : undefined;
@@ -36,6 +37,8 @@ app.enableSandbox();
 
 let win: BrowserWindow;
 let vault: Vault;
+let configStore: ConfigStore;
+let plainConfig: PlainConfig;
 let state: BrowserState;
 let hibernator: Hibernator;
 let metricsTimer: ReturnType<typeof setInterval> | undefined;
@@ -120,7 +123,7 @@ async function chooseExtension(): Promise<void> {
   else state.extensions.push({ id: randomUUID(), directory, ...summary, enabled: true });
   if (!hadEnabled) migratePageSessions();
   else { for (const context of disposableSessions.all()) await applyExtensions(context); for (const view of views.values()) if (!view.webContents.isDestroyed()) view.webContents.reload(); }
-  persist(); publish();
+  persist(); persistPlainConfig('extensions'); publish();
 }
 
 function migratePageSessions(): void {
@@ -165,17 +168,39 @@ function schedulePublish(): void {
 }
 function persist(): void {
   vault.set('session', state.tabs.map(({ id, url, title, workspaceId }) => ({ id, url, title, workspaceId })));
-  vault.set('workspaces', state.workspaces);
-  vault.set('active-workspace', state.activeWorkspaceId);
   vault.set('bookmarks', state.bookmarks);
   vault.set('history', state.history);
-  vault.set('theme', state.theme);
-  vault.set('accent', state.accent);
-  vault.set('background-limit', state.backgroundLimit);
-  vault.set('sidebar-collapsed', !!state.sidebarCollapsed);
-  vault.set('extensions', state.extensions);
   vault.set('boosts', state.boosts);
   state.storage = vault.mode; state.storageMessage = vault.message; state.vaultLocked = vault.locked;
+}
+function persistPlainConfig(part: 'settings' | 'workspaces' | 'extensions' | 'all'): void {
+  if (plainConfig.warnings.length) return;
+  if (part === 'settings' || part === 'all') {
+    plainConfig.settings = { theme: state.theme, accent: state.accent ?? '#e5231b', backgroundLimit: state.backgroundLimit, sidebarCollapsed: !!state.sidebarCollapsed };
+    configStore.writeSettings(plainConfig.settings);
+  }
+  if (part === 'workspaces' || part === 'all') {
+    plainConfig.workspaces.activeWorkspaceId = state.activeWorkspaceId;
+    plainConfig.workspaces.workspaces = state.workspaces.map(workspace => ({
+      id: workspace.id, name: workspace.name,
+      startupPages: plainConfig.workspaces.workspaces.find(item => item.id === workspace.id)?.startupPages ?? [],
+    }));
+    configStore.writeWorkspaces(plainConfig.workspaces);
+  }
+  if (part === 'extensions' || part === 'all') {
+    plainConfig.extensions.extensions = (state.extensions ?? []).map(extension => ({ id: extension.id, directory: portableConfigPath(resolve(extension.directory)), enabled: extension.enabled }));
+    configStore.writeExtensions(plainConfig.extensions);
+  }
+}
+function forgetLegacyPlainConfig(): void {
+  for (const key of ['theme', 'accent', 'background-limit', 'sidebar-collapsed', 'workspaces', 'active-workspace', 'extensions']) vault.delete(key);
+}
+function configuredExtensions(config: PlainConfig): ExtensionRegistration[] {
+  return config.extensions.extensions.map(declaration => {
+    const directory = resolveConfigPath(declaration.directory);
+    try { return { id: declaration.id, directory, ...inspectExtension(directory), enabled: declaration.enabled }; }
+    catch (cause) { return { id: declaration.id, directory, name: declaration.id, version: '?', permissions: [], hosts: [], enabled: false, error: cause instanceof Error ? cause.message : String(cause) }; }
+  });
 }
 function layout(): void {
   if (!win || win.isDestroyed()) return;
@@ -384,7 +409,8 @@ function switchWorkspace(id: string): void {
   const tabs = state.tabs.filter(tab => tab.workspaceId === id);
   const target = tabs.find(tab => tab.id === workspace.lastActiveTabId) ?? tabs[0];
   if (target) activateTab(target.id); else newTab();
-  persist();
+  plainConfig.workspaces.activeSession = undefined;
+  persist(); persistPlainConfig('workspaces');
 }
 async function closeTab(id: string): Promise<void> {
   if (closingTabs.has(id)) return;
@@ -449,19 +475,26 @@ async function dispatch(command: Command): Promise<void> {
       const merge = (saved: Entry[], current: Entry[]) => [...new Map([...saved, ...current].map(entry => [entry.id, entry])).values()].sort((a, b) => b.time - a.time);
       state.bookmarks = merge(vault.get<Entry[]>('bookmarks', []), state.bookmarks);
       state.history = merge(vault.get<Entry[]>('history', []), state.history).slice(0, 2000);
-      state.backgroundLimit = vault.get('background-limit', state.backgroundLimit);
-      state.sidebarCollapsed = vault.get('sidebar-collapsed', state.sidebarCollapsed ?? false);
-      state.theme = vault.get('theme', state.theme); nativeTheme.themeSource = state.theme;
-      state.accent = vault.get('accent', state.accent ?? '#e5231b');
       state.boosts = [...new Map([...(state.boosts ?? []), ...vault.get<Boost[]>('boosts', [])].map(boost => [boost.domain, boost])).values()];
-      const savedExtensions = vault.get<ExtensionRegistration[]>('extensions', []);
+      const legacyWorkspaces = vault.get<unknown>('workspaces', undefined);
+      const legacyExtensions = vault.get<ExtensionRegistration[] | undefined>('extensions', undefined);
+      if (legacyWorkspaces !== undefined) state.workspaces = [...new Map([...state.workspaces, ...restoreWorkspaces(legacyWorkspaces)].map(workspace => [workspace.id, workspace])).values()];
       state.extensions ??= [];
-      for (const extension of savedExtensions) if (!state.extensions.some(item => item.id === extension.id)) state.extensions.push({ ...extension, enabled: false, error: extension.enabled ? 'Review and enable this extension after unlocking.' : extension.error });
-      const savedWorkspaces = restoreWorkspaces(vault.get('workspaces', []));
-      state.workspaces = [...new Map([...state.workspaces, ...savedWorkspaces].map(workspace => [workspace.id, workspace])).values()];
+      if (legacyExtensions) for (const extension of legacyExtensions) if (!state.extensions.some(item => item.id === extension.id)) state.extensions.push({ ...extension, enabled: false, error: extension.enabled ? 'Review and enable this extension after migration.' : extension.error });
+      const legacyTheme = vault.get<BrowserState['theme'] | undefined>('theme', undefined);
+      const legacyAccent = vault.get<string | undefined>('accent', undefined);
+      const legacyLimit = vault.get<number | undefined>('background-limit', undefined);
+      const legacySidebar = vault.get<boolean | undefined>('sidebar-collapsed', undefined);
+      if (legacyTheme) { state.theme = legacyTheme; nativeTheme.themeSource = legacyTheme; }
+      if (legacyAccent) state.accent = legacyAccent;
+      if (legacyLimit !== undefined) state.backgroundLimit = legacyLimit;
+      if (legacySidebar !== undefined) state.sidebarCollapsed = legacySidebar;
+      const legacyActive = vault.get<string | undefined>('active-workspace', undefined);
+      if (legacyActive && state.workspaces.some(workspace => workspace.id === legacyActive)) state.activeWorkspaceId = legacyActive;
       for (const tab of restoreSavedTabs(vault.get('session', []), state.workspaces)) {
         if (!state.tabs.some(existing => existing.id === tab.id)) state.tabs.push(tab);
       }
+      persistPlainConfig('all'); forgetLegacyPlainConfig();
       state.storage = vault.mode; state.storageMessage = vault.message; state.vaultLocked = vault.locked;
       persist(); break;
     }
@@ -487,7 +520,7 @@ async function dispatch(command: Command): Promise<void> {
       const workspace = state.workspaces.find(workspace => workspace.id === command.id);
       if (!workspace) throw new Error('This workspace no longer exists.');
       if (state.workspaces.some(other => other.id !== command.id && other.name.toLocaleLowerCase() === command.name.toLocaleLowerCase())) throw new Error('A workspace with this name already exists.');
-      workspace.name = command.name; persist(); break;
+      workspace.name = command.name; persist(); persistPlainConfig('workspaces'); break;
     }
     case 'switch-workspace': switchWorkspace(command.id); break;
     case 'activate-tab': activateTab(command.id); break;
@@ -513,13 +546,13 @@ async function dispatch(command: Command): Promise<void> {
       layout(); break;
     }
     case 'stop': wc?.stop(); break;
-    case 'background-limit': state.backgroundLimit = command.value; persist(); hibernator.schedule(); break;
-    case 'toggle-sidebar': state.sidebarCollapsed = !state.sidebarCollapsed; layout(); persist(); break;
+    case 'background-limit': state.backgroundLimit = command.value; persist(); persistPlainConfig('settings'); hibernator.schedule(); break;
+    case 'toggle-sidebar': state.sidebarCollapsed = !state.sidebarCollapsed; layout(); persist(); persistPlainConfig('settings'); break;
     case 'bookmark': toggleBookmark(); break;
     case 'remove-bookmark': state.bookmarks = state.bookmarks.filter(item => item.id !== command.id); persist(); break;
     case 'clear-history': state.history = []; persist(); break;
-    case 'theme': state.theme = command.value; nativeTheme.themeSource = command.value; persist(); break;
-    case 'accent': state.accent = command.value; persist(); break;
+    case 'theme': state.theme = command.value; nativeTheme.themeSource = command.value; persist(); persistPlainConfig('settings'); break;
+    case 'accent': state.accent = command.value; persist(); persistPlainConfig('settings'); break;
     case 'configure-shell': shellInsets = command.insets; layout(); break;
     case 'load-extension': await chooseExtension(); break;
     case 'toggle-extension': {
@@ -532,7 +565,7 @@ async function dispatch(command: Command): Promise<void> {
       const hasEnabled = state.extensions?.some(item => item.enabled) ?? false;
       if (hadEnabled !== hasEnabled) migratePageSessions();
       else { for (const context of disposableSessions.all()) await applyExtensions(context); for (const view of views.values()) if (!view.webContents.isDestroyed()) view.webContents.reload(); }
-      persist(); break;
+      persist(); persistPlainConfig('extensions'); break;
     }
     case 'remove-extension': {
       const extension = state.extensions?.find(item => item.id === command.id);
@@ -545,7 +578,7 @@ async function dispatch(command: Command): Promise<void> {
       state.extensions = state.extensions?.filter(item => item.id !== command.id) ?? [];
       const hasEnabled = state.extensions.some(item => item.enabled);
       if (hadEnabled !== hasEnabled) migratePageSessions();
-      persist(); break;
+      persist(); persistPlainConfig('extensions'); break;
     }
     case 'save-boost': {
       const tab = active();
@@ -579,10 +612,17 @@ app.whenReady().then(async () => {
   if (!primaryInstance) return;
   vault = new Vault(join(app.getPath('userData'), 'vault'), { useKeychain: !testProfile });
   const localModel = modelProviders.get('local-extractive')!;
-  state = { tabs: [], activeId: '', bookmarks: vault.get<Entry[]>('bookmarks', []), history: vault.get<Entry[]>('history', []), storage: vault.mode, storageMessage: vault.message, vaultLocked: vault.locked, theme: vault.get('theme', 'system'), accent: vault.get('accent', '#e5231b'), panel: 'none', backgroundLimit: vault.get('background-limit', 6), workspaces: restoreWorkspaces(vault.get('workspaces', [])), activeWorkspaceId: DEFAULT_WORKSPACE.id, extensions: vault.get<ExtensionRegistration[]>('extensions', []), extensionsAvailable: RamSessions.supported(), boosts: vault.get<Boost[]>('boosts', []), ai: { open: false, busy: false, provider: localModel.id, disclosure: localModel.disclosure } };
-  const savedActiveWorkspace = vault.get('active-workspace', state.workspaces[0].id);
-  state.sidebarCollapsed = vault.get('sidebar-collapsed', false);
-  state.activeWorkspaceId = state.workspaces.some(workspace => workspace.id === savedActiveWorkspace) ? savedActiveWorkspace : state.workspaces[0].id;
+  const legacyWorkspaces = restoreWorkspaces(vault.get('workspaces', []));
+  const legacyActiveWorkspace = vault.get('active-workspace', legacyWorkspaces[0].id);
+  configStore = new ConfigStore(testProfile ? join(testProfile, 'config') : undefined);
+  plainConfig = configStore.load({
+    settings: { theme: vault.get('theme', 'system'), accent: vault.get('accent', '#e5231b'), backgroundLimit: vault.get('background-limit', 6), sidebarCollapsed: vault.get('sidebar-collapsed', false) },
+    workspaces: { activeWorkspaceId: legacyActiveWorkspace, workspaces: legacyWorkspaces.map(workspace => ({ id: workspace.id, name: workspace.name, startupPages: [] })), sessions: [] },
+    extensions: { extensions: vault.get<ExtensionRegistration[]>('extensions', []).map(extension => ({ id: extension.id, directory: portableConfigPath(resolve(extension.directory)), enabled: false })) },
+  });
+  forgetLegacyPlainConfig();
+  const configuredWorkspaces = plainConfig.workspaces.workspaces.map(({ id, name }) => ({ id, name }));
+  state = { tabs: [], activeId: '', bookmarks: vault.get<Entry[]>('bookmarks', []), history: vault.get<Entry[]>('history', []), storage: vault.mode, storageMessage: plainConfig.warnings.length ? `${vault.message} Config warning: ${plainConfig.warnings.join(' ')}` : vault.message, vaultLocked: vault.locked, theme: plainConfig.settings.theme, accent: plainConfig.settings.accent, panel: 'none', backgroundLimit: plainConfig.settings.backgroundLimit, sidebarCollapsed: plainConfig.settings.sidebarCollapsed, workspaces: configuredWorkspaces, activeWorkspaceId: plainConfig.workspaces.activeWorkspaceId, extensions: configuredExtensions(plainConfig), extensionsAvailable: RamSessions.supported(), boosts: vault.get<Boost[]>('boosts', []), ai: { open: false, busy: false, provider: localModel.id, disclosure: localModel.disclosure } };
   nativeTheme.themeSource = state.theme;
   win = new BrowserWindow({ width: 1280, height: 840, minWidth: 760, minHeight: 520, title: 'Astra', backgroundColor: '#000000', show: false, autoHideMenuBar: true,
     webPreferences: { preload: join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true, spellcheck: false, webviewTag: false, partition: 'astra-chrome' },
@@ -630,9 +670,12 @@ app.whenReady().then(async () => {
     })().catch(() => { closingWindow = false; activateTab(state.activeId); });
   });
   const saved = restoreSavedTabs(vault.get('session', []), state.workspaces);
-  // Saved pages restore on explicit activation; startup makes no website requests.
+  // Encrypted saved pages restore on activation; only explicitly configured startup pages make requests.
   newTab();
   state.tabs.push(...saved);
+  const selectedSession = plainConfig.workspaces.sessions.find(item => item.name === plainConfig.workspaces.activeSession);
+  const startupPages = selectedSession?.pages ?? plainConfig.workspaces.workspaces.find(item => item.id === state.activeWorkspaceId)?.startupPages ?? [];
+  for (const url of startupPages) newTab(url);
   persist();
   await win.loadURL(chromeURL);
   win.show();

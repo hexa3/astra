@@ -98,6 +98,12 @@ export class Vault {
         .run(id, seal(this.key, JSON.stringify(value), id));
     } catch { this.degrade('Encrypted storage could not be written. This session is in memory only; check available disk space and file permissions.'); }
   }
+  delete(id: string): void {
+    this.memory.delete(id);
+    if (!this.db || !this.key) return;
+    try { this.db.prepare('DELETE FROM records WHERE id = ?').run(id); }
+    catch { this.degrade('An encrypted record could not be removed. Existing files are preserved; this session is in memory only.'); }
+  }
   private degrade(message: string): void {
     this.mode = 'memory'; this.message = message;
     try { this.db?.close(); } catch { /* Preserve the original storage failure. */ }

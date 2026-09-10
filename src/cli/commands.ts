@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { isAbsolute, resolve } from 'node:path';
 import { stringify } from 'smol-toml';
-import { CONFIG_FILES, ConfigStore, portableConfigPath } from '../config/index';
+import { CONFIG_FILES, ConfigStore, portableConfigPath, resolveConfigPath } from '../config/index';
 import { inspectExtension } from '../core/extension-manifest';
 
 export interface CliIO {
@@ -68,7 +68,7 @@ export function runCli(argv: string[], io: CliIO): number {
     if (group === 'extension' && action === 'install') {
       const directory = resolve(requireValue(values[0], 'Extension directory'));
       const summary = inspectExtension(directory);
-      const existing = config.extensions.extensions.find(item => resolve(item.directory.replace(/^\$HOME(?=\/|$)/, process.env.HOME ?? '')) === directory);
+      const existing = config.extensions.extensions.find(item => resolveConfigPath(item.directory) === directory);
       const declaration = existing ?? { id: randomUUID(), directory: portableConfigPath(directory), enabled: true };
       declaration.enabled = true;
       if (!existing) config.extensions.extensions.push(declaration);

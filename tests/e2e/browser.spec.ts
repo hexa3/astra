@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
+import { ConfigStore } from '../../src/config/index';
 
 let server: Server;
 let origin: string;
@@ -67,6 +68,30 @@ test('launches, renders a page and supports navigation, tabs and privacy', async
     await chrome.getByRole('button', { name: 'History', exact: true }).click();
     await expect(chrome.getByRole('heading', { name: 'History' })).toBeVisible();
     await chrome.screenshot({ path: 'test-results/first-launch-history.png' });
+  } finally { await app.close(); }
+});
+
+test('uses plain-text settings and workspace startup definitions as runtime config', async () => {
+  const profile = mkdtempSync(join(tmpdir(), 'astra-plain-config-'));
+  const store = new ConfigStore(join(profile, 'config'));
+  store.load();
+  store.writeSettings({ theme: 'light', accent: '#123456', backgroundLimit: 3, sidebarCollapsed: true });
+  store.writeWorkspaces({
+    activeWorkspaceId: 'research',
+    workspaces: [{ id: 'research', name: 'Research', startupPages: [`${origin}/second`] }],
+    sessions: [],
+  });
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, ASTRA_TEST_PROFILE: profile } });
+  try {
+    const chrome = await app.firstWindow();
+    await expect(chrome.getByRole('tab', { name: 'Second page', exact: false })).toBeVisible();
+    const snapshot = await chrome.evaluate(() => window.astra.snapshot());
+    expect(snapshot.activeWorkspaceId).toBe('research');
+    expect(snapshot.theme).toBe('light'); expect(snapshot.accent).toBe('#123456');
+    expect(snapshot.backgroundLimit).toBe(3); expect(snapshot.sidebarCollapsed).toBe(true);
+    await chrome.evaluate(() => window.astra.command({ type: 'theme', value: 'dark' }));
+    await expect.poll(() => readFileSync(join(profile, 'config', 'settings.toml'), 'utf8')).toContain('theme = "dark"');
+    for (const file of readdirSync(join(profile, 'config'))) expect(readFileSync(join(profile, 'config', file), 'utf8')).not.toMatch(/passphrase|sync_key|credential =/i);
   } finally { await app.close(); }
 });
 
