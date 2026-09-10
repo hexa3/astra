@@ -6,7 +6,7 @@ import { isAbsolute, join, relative, resolve } from 'node:path';
 import { parse, stringify } from 'smol-toml';
 
 export const CONFIG_FORMAT_VERSION = 1;
-export const CONFIG_FILES = ['settings.toml', 'workspaces.toml', 'extensions.toml'] as const;
+export const CONFIG_FILES = ['settings.toml', 'workspaces.toml', 'extensions.toml', 'sync.toml'] as const;
 
 export interface SettingsConfig {
   theme: 'system' | 'dark' | 'light';
@@ -40,10 +40,18 @@ export interface ExtensionDeclaration {
   hosts: string[];
 }
 export interface ExtensionsConfig { extensions: ExtensionDeclaration[] }
+export interface SyncConfig {
+  enabled: boolean;
+  endpoint?: string;
+  realm?: string;
+  device?: string;
+  verifier?: string;
+}
 export interface PlainConfig {
   settings: SettingsConfig;
   workspaces: WorkspacesConfig;
   extensions: ExtensionsConfig;
+  sync: SyncConfig;
   directory: string;
   warnings: string[];
 }
@@ -51,6 +59,7 @@ export interface ConfigSeeds {
   settings?: SettingsConfig;
   workspaces?: WorkspacesConfig;
   extensions?: ExtensionsConfig;
+  sync?: SyncConfig;
 }
 
 export const DEFAULT_SETTINGS: SettingsConfig = {
@@ -62,6 +71,7 @@ export const DEFAULT_WORKSPACES: WorkspacesConfig = {
   sessions: [],
 };
 export const DEFAULT_EXTENSIONS: ExtensionsConfig = { extensions: [] };
+export const DEFAULT_SYNC: SyncConfig = { enabled: false };
 
 const object = (value: unknown, label: string): Record<string, unknown> => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(`${label} must be a TOML table.`);
@@ -177,9 +187,25 @@ function parseExtensions(raw: unknown): ExtensionsConfig {
   return { extensions };
 }
 
+function parseSync(raw: unknown): SyncConfig {
+  const value = object(raw, 'sync');
+  if (typeof value.enabled !== 'boolean') throw new Error('sync enabled must be true or false.');
+  if (!value.enabled) return { enabled: false };
+  const endpoint = text(value.endpoint, 'sync endpoint', 2048);
+  let url: URL;
+  try { url = new URL(endpoint); } catch { throw new Error('sync endpoint must be an absolute URL.'); }
+  const loopback = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
+  if (url.protocol !== 'https:' && !(url.protocol === 'http:' && loopback) || url.username || url.password || url.search || url.hash) throw new Error('sync endpoint must be HTTPS (or loopback HTTP) without credentials, query, or fragment.');
+  const realm = text(value.realm, 'sync realm', 100);
+  const verifier = text(value.verifier, 'sync verifier', 100);
+  if (!/^[a-zA-Z0-9_-]{43}$/.test(realm) || !/^[a-zA-Z0-9_-]{43}$/.test(verifier)) throw new Error('sync realm and verifier must be canonical 32-byte base64url values.');
+  return { enabled: true, endpoint: url.href.replace(/\/$/, ''), realm, device: identifier(value.device, 'sync device'), verifier };
+}
+
 const settingsDocument = (settings: SettingsConfig) => ({ format_version: CONFIG_FORMAT_VERSION, theme: settings.theme, accent: settings.accent, background_limit: settings.backgroundLimit, sidebar_collapsed: settings.sidebarCollapsed });
 const workspacesDocument = (config: WorkspacesConfig) => ({ format_version: CONFIG_FORMAT_VERSION, active_workspace: config.activeWorkspaceId, active_session: config.activeSession, workspace: config.workspaces.map(workspace => ({ id: workspace.id, name: workspace.name, startup_pages: workspace.startupPages })), session: config.sessions.map(session => ({ name: session.name, workspace: session.workspaceId, pages: session.pages })) });
 const extensionsDocument = (config: ExtensionsConfig) => ({ format_version: CONFIG_FORMAT_VERSION, extension: config.extensions });
+const syncDocument = (config: SyncConfig) => ({ format_version: CONFIG_FORMAT_VERSION, enabled: config.enabled, endpoint: config.endpoint, realm: config.realm, device: config.device, verifier: config.verifier });
 
 export class ConfigStore {
   readonly directory: string;
@@ -194,12 +220,14 @@ export class ConfigStore {
     const settings = this.read('settings.toml', seeds.settings ?? DEFAULT_SETTINGS, parseSettings, settingsDocument, warnings);
     const workspaces = this.read('workspaces.toml', seeds.workspaces ?? DEFAULT_WORKSPACES, parseWorkspaces, workspacesDocument, warnings);
     const extensions = this.read('extensions.toml', seeds.extensions ?? DEFAULT_EXTENSIONS, parseExtensions, extensionsDocument, warnings);
-    return { settings, workspaces, extensions, directory: this.directory, warnings };
+    const sync = this.read('sync.toml', seeds.sync ?? DEFAULT_SYNC, parseSync, syncDocument, warnings);
+    return { settings, workspaces, extensions, sync, directory: this.directory, warnings };
   }
 
   writeSettings(value: SettingsConfig): void { this.write('settings.toml', settingsDocument(parseSettings(settingsDocument(value)))); }
   writeWorkspaces(value: WorkspacesConfig): void { this.write('workspaces.toml', workspacesDocument(parseWorkspaces(workspacesDocument(value)))); }
   writeExtensions(value: ExtensionsConfig): void { this.write('extensions.toml', extensionsDocument(parseExtensions(extensionsDocument(value)))); }
+  writeSync(value: SyncConfig): void { this.write('sync.toml', syncDocument(parseSync(syncDocument(value)))); }
 
   declareExtension(directory: string): ExtensionDeclaration {
     const config = this.load().extensions;

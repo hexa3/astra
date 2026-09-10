@@ -4,7 +4,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { ConfigStore, configDirectory, portableConfigPath, resolveConfigPath, safeStartupURL } from '../src/config/index';
+import { CONFIG_FILES, ConfigStore, configDirectory, portableConfigPath, resolveConfigPath, safeStartupURL } from '../src/config/index';
 
 test('plain config initializes as readable TOML without secret material', () => {
   const directory = mkdtempSync(join(tmpdir(), 'astra-config-'));
@@ -12,11 +12,23 @@ test('plain config initializes as readable TOML without secret material', () => 
     const config = new ConfigStore(directory).load();
     assert.equal(config.settings.theme, 'system');
     assert.equal(config.workspaces.workspaces[0].name, 'Personal');
-    for (const filename of ['settings.toml', 'workspaces.toml', 'extensions.toml']) {
+    for (const filename of CONFIG_FILES) {
       const text = readFileSync(join(directory, filename), 'utf8');
       assert.match(text, /format_version = 1/);
       assert.doesNotMatch(text, /correct horse|api[_-]?key|bearer\s+[a-z0-9]/i);
     }
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+test('sync config contains pairing metadata but no passphrase or key', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'astra-config-sync-'));
+  try {
+    const store = new ConfigStore(directory); store.load();
+    store.writeSync({ enabled: true, endpoint: 'https://sync.example', realm: 'a'.repeat(43), device: 'laptop', verifier: 'b'.repeat(43) });
+    const text = readFileSync(join(directory, 'sync.toml'), 'utf8');
+    assert.match(text, /endpoint = "https:\/\/sync\.example"/);
+    assert.doesNotMatch(text, /passphrase|auth_token|encryption_key/i);
+    assert.equal(store.load().sync.device, 'laptop');
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
 
