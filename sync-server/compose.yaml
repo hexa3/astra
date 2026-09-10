@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: MPL-2.0
+services:
+  astra-sync:
+    build:
+      context: ..
+      dockerfile: sync-server/Dockerfile
+    image: astra-sync-server:1.0.0
+    ports:
+      - "${ASTRA_SYNC_PORT:-8787}:8787"
+    volumes:
+      - astra-sync-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+volumes:
+  astra-sync-data:
