@@ -78,3 +78,7 @@ The exact 1.0 source passed the Linux browser gate and the native Windows x64, m
 ## 2026-09-10 14:15 GST — Astra 1.0.0 published
 
 Published [Astra 1.0.0](https://github.com/hexa3/astra/releases/tag/v1.0.0) as a non-prerelease with AppImage and Debian packages for Linux, an NSIS installer for Windows x64, DMG/ZIP packages for both Apple Silicon and Intel macOS, and a checksum manifest. GitHub independently reports an uploaded SHA-256 digest for every asset matching the local manifest. The final Linux gate passed all source/native tests and the production audit after CI stopped consulting an unrelated hosted Google Chrome apt source whose changing index had caused two pre-test infrastructure failures. The native three-platform package run remains green. The release tag is annotated, `main` is clean and pushed, and the documented limitations remain intentionally visible rather than represented as unfinished working features.
+
+## 2026-09-10 15:50 GST — Phase 2 licensing audit
+
+Started Phase 2 on `hour0-license-governance` from the verified 1.0 release. Git history identifies one author/copyright holder for all pre-Phase-2 commits, clearing the ownership prerequisite for a legitimate relicense. Replaced MIT with the unmodified MPL 2.0 text and changed package metadata and user-facing claims to describe its actual file-level copyleft scope. Existing third-party licenses remain separate. Next: attach SPDX notices to covered files and make the governance/funding commitments operational rather than aspirational.

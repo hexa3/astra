@@ -5,7 +5,7 @@
   "private": true,
   "type": "module",
   "description": "A quiet, open browser. Local by default. Yours by design.",
-  "license": "MIT",
+  "license": "MPL-2.0",
   "author": "Astra contributors",
   "homepage": "https://github.com/hexa3/astra",
   "repository": {
@@ -62,7 +62,7 @@
     "extraResources": [
       {
         "from": "LICENSE",
-        "to": "licenses/ASTRA-MIT.txt"
+        "to": "licenses/ASTRA-MPL-2.0.txt"
       },
       {
         "from": "LICENSES",

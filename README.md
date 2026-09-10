@@ -4,7 +4,7 @@
 
 Astra is a desktop browser built with Electron, Chromium, TypeScript and Svelte. It combines an austere black/white/one-accent interface with browser internals that are visible rather than hidden: tracker and request counts, renderer memory, sleeping tabs, storage state and permission policy all live in the interface.
 
-Astra is MIT-licensed, has no telemetry or advertising code, makes no background update request, and has no account requirement or paid tier. The Doto chrome font is bundled under the [SIL Open Font License](LICENSES/Doto-OFL.txt); pages retain their own typography.
+Astra is licensed under the file-level copyleft [Mozilla Public License 2.0](LICENSE), has no telemetry or advertising code, makes no background update request, and has no account requirement or paid tier. Distributed modifications to Astra's covered source files must remain available under MPL 2.0; see the license itself for the exact terms. The Doto chrome font is bundled separately under the [SIL Open Font License](LICENSES/Doto-OFL.txt); pages retain their own typography.
 
 ## What works in 1.0
 

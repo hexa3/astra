@@ -17,7 +17,7 @@ try {
   await chrome.evaluate(() => window.astra.command({ type: 'theme', value: 'dark' }));
   await chrome.screenshot({ path: 'test-results/packaged-newtab-dark.png' });
   if (!readFileSync(join(runtime.resources, 'licenses', 'Doto-OFL.txt'), 'utf8').includes('SIL OPEN FONT LICENSE')) throw new Error('Packaged font license is missing.');
-  if (!readFileSync(join(runtime.resources, 'licenses', 'ASTRA-MIT.txt'), 'utf8').includes('MIT License')) throw new Error('Astra license is missing.');
+  if (!readFileSync(join(runtime.resources, 'licenses', 'ASTRA-MPL-2.0.txt'), 'utf8').includes('Mozilla Public License Version 2.0')) throw new Error('Astra license is missing.');
   await chrome.getByRole('textbox', { name: 'Address or search' }).fill(origin);
   await chrome.getByRole('textbox', { name: 'Address or search' }).press('Enter');
   await chrome.getByRole('tab', { name: 'Packaged browsing check' }).waitFor();
