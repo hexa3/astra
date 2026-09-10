@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import { app, BrowserWindow, WebContentsView, dialog } from 'electron';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';

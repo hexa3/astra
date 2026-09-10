@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import type { BrowserState, Command } from './types';
 import { resolveAddress } from './navigation';
 

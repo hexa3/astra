@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 export const CHROME_TOP = 88;
 export const STATUS_HEIGHT = 24;
 export const AI_WIDTH = 336;

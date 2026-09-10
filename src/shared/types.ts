@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 export interface Tab {
   id: string; url: string; title: string; loading: boolean;
   workspaceId?: string;

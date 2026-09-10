@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import type { NavigationEntry, WebContentsView } from 'electron';
 import type { BrowserState, Tab } from '../shared/types';
 

@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: MPL-2.0 -->
 <script lang="ts">
   import type { BrowserState, Command, Tab } from '../shared/types';
   import Icon from './Icon.svelte';

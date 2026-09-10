@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: MPL-2.0 -->
 <script lang="ts">
   import { onMount, tick } from 'svelte';
   import type { BrowserState, Command } from '../shared/types';

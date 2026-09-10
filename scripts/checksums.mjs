@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import { createHash } from 'node:crypto';
 import { createReadStream, writeFileSync } from 'node:fs';
 import { basename, resolve } from 'node:path';

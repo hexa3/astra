@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import { test, expect, _electron as electron } from '@playwright/test';
 import { createServer, type Server } from 'node:http';
 import { mkdtempSync, readFileSync, readdirSync } from 'node:fs';

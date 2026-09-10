@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import { build } from 'esbuild';
 import { spawn } from 'node:child_process';
 import { mkdtempSync } from 'node:fs';

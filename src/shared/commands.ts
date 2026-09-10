@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import type { Command } from './types';
 import { workspaceName } from './workspaces';
 

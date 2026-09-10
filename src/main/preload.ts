@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import { contextBridge, ipcRenderer } from 'electron';
 import type { AstraAPI, BrowserState } from '../shared/types';
 const api: AstraAPI = {

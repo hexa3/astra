@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import { app, BrowserWindow, WebContentsView, ipcMain, Menu, session, nativeTheme, dialog } from 'electron';
 import type { IpcMainInvokeEvent, WebContents } from 'electron';
 import { join } from 'node:path';

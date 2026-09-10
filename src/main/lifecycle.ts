@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import { dialog } from 'electron';
 import type { BrowserWindow, WebContents } from 'electron';
 

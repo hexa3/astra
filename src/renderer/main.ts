@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import { mount } from 'svelte';
 import '@fontsource/doto/600.css';
 import './style.css';

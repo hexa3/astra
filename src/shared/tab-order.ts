@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import type { Tab } from './types';
 
 /** Reorder within a workspace while preserving every other workspace's slots. */

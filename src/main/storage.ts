@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import Database from 'better-sqlite3';
 import { safeStorage } from 'electron';
 import { randomBytes } from 'node:crypto';

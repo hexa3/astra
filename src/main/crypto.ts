@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import { createCipheriv, createDecipheriv, randomBytes, scrypt } from 'node:crypto';
 
 export function deriveKey(passphrase: string, salt: Buffer): Promise<Buffer> {

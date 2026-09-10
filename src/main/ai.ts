@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 export interface PageDocument { url: string; title: string; text: string }
 export interface ModelProvider {
   readonly id: string;

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 export function isWebURL(value: string): boolean {
   try { return ['http:', 'https:'].includes(new URL(value).protocol); } catch { return false; }
 }

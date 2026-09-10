@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import { session } from 'electron';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';

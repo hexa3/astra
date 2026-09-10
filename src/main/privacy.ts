@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import type { Session } from 'electron';
 import { getDomain } from 'tldts';
 import type { Tab } from '../shared/types';

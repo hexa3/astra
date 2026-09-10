@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import { build } from 'esbuild';
 await build({
   entryPoints: ['src/main/main.ts', 'src/main/preload.ts'],

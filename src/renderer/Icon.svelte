@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: MPL-2.0 -->
 <script lang="ts">
   export let name: 'back' | 'forward' | 'reload' | 'plus' | 'close' | 'bookmark' | 'history' | 'shield' | 'sun' | 'arrow' | 'globe' | 'search' | 'sidebar' | 'split' | 'extension' | 'spark';
   const paths = {

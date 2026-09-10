@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import { isAbsolute, resolve } from 'node:path';
 
 /** A deliberate CLI profile works in packaged builds without test-only hooks. */

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import { test, expect, _electron as electron, type ElectronApplication } from '@playwright/test';
 import { createServer } from 'node:https';
 import { execFileSync } from 'node:child_process';
