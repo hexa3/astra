@@ -1,0 +1,49 @@
+# SPDX-License-Identifier: MPL-2.0
+name: Funding proposal
+description: Propose a donation rail, grant, expense, or other project funding
+title: "Funding: "
+labels: ["funding", "governance"]
+body:
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Funding path
+      options:
+        - Astra Community Fund donations
+        - Public-interest grant
+        - Project expense
+        - Fiscal host or payment rail
+    validations:
+      required: true
+  - type: textarea
+    id: parties
+    attributes:
+      label: Parties, recipient, and decision makers
+      description: Name organizations and relevant maintainer relationships. Do not post banking or identity documents.
+    validations:
+      required: true
+  - type: input
+    id: value
+    attributes:
+      label: Currency and amount or range
+    validations:
+      required: true
+  - type: textarea
+    id: terms
+    attributes:
+      label: Material terms, restrictions, and deliverables
+    validations:
+      required: true
+  - type: textarea
+    id: custody
+    attributes:
+      label: Custody, fees, reporting, and exit plan
+    validations:
+      required: true
+  - type: checkboxes
+    id: covenant
+    attributes:
+      label: User-interest covenant
+      options:
+        - label: This proposal buys no default placement, user data, closed feature, governance power, or weakened privacy.
+          required: true

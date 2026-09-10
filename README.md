@@ -66,6 +66,6 @@ The built-in assistant processes capped rendered text locally. No page content i
 
 ## Contributing and governance
 
-Forks and replacement modules are welcome. No contributor agreement, account, monetization gate or proprietary service is required. Open an issue describing the user problem and propose a small tested change. Architectural changes require a rationale in [docs/decisions.md](docs/decisions.md); features must work, remain keyboard accessible, and disclose their network and storage behavior.
+Forks and replacement modules are welcome. No contributor agreement, account, monetization gate or proprietary service is required. See [CONTRIBUTING.md](CONTRIBUTING.md) for the engineering path and [GOVERNANCE.md](GOVERNANCE.md) for public RFCs, maintainer eligibility, votes, appeals, conflicts and the automatic end of single-maintainer bootstrap. Astra states plainly that it is not yet an incorporated foundation or elected multi-person council.
 
-The initial maintainer currently reviews changes. Astra does not claim an elected governance body that does not yet exist. The project records decisions publicly and intends to evolve governance with sustained contributors. See the [build log](docs/progress-log.md) for the implementation record.
+[FUNDING.md](FUNDING.md) defines the only permitted donation, grant and enterprise-support paths and excludes ads, search placement, data revenue and paid governance. Intake remains closed until a transparent legal recipient and payment rail pass the protected vote; the public treasury therefore starts at exactly zero. See the [build log](docs/progress-log.md) for the implementation record.

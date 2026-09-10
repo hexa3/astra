@@ -1,0 +1,38 @@
+# SPDX-License-Identifier: MPL-2.0
+name: Enterprise support proposal
+description: Request transparent paid deployment or support services
+title: "Support: "
+labels: ["funding", "support-contract"]
+body:
+  - type: input
+    id: organization
+    attributes:
+      label: Organization
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Service scope and term
+      description: Do not include vulnerabilities, credentials, personal contacts, or confidential system details.
+    validations:
+      required: true
+  - type: input
+    id: value
+    attributes:
+      label: Proposed currency and price range
+    validations:
+      required: true
+  - type: textarea
+    id: effects
+    attributes:
+      label: Provider, conflicts, and maintainer-time impact
+    validations:
+      required: true
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Open support terms
+      options:
+        - label: The request is for services, not exclusive code, private fixes, default placement, data, or governance influence.
+          required: true
