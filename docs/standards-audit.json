@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "auditedRelease": "v1.20.0",
+  "policy": "Astra does not expose browser-only JavaScript APIs to web content.",
+  "surfaces": [
+    {
+      "id": "boosts",
+      "name": "Per-site Boosts",
+      "classification": "browser-chrome",
+      "webExposure": "none",
+      "basis": ["CSS Cascading and Inheritance", "ECMAScript", "DOM"],
+      "implementation": "src/core/browser-core.ts",
+      "verification": "tests/standards.test.ts",
+      "proposal": null
+    },
+    {
+      "id": "resource-panel",
+      "name": "Resource and privacy panel",
+      "classification": "browser-chrome",
+      "webExposure": "none",
+      "basis": ["Fetch metadata observed by the user agent"],
+      "implementation": "src/core/privacy.ts",
+      "verification": "tests/e2e/privacy.spec.ts",
+      "proposal": null
+    },
+    {
+      "id": "ai-assistant",
+      "name": "Optional local assistant",
+      "classification": "browser-chrome",
+      "webExposure": "none",
+      "basis": ["DOM text read by an explicit user-agent action"],
+      "implementation": "src/core/ai.ts",
+      "verification": "tests/ai.test.ts",
+      "proposal": null
+    },
+    {
+      "id": "peek",
+      "name": "Peek preview",
+      "classification": "browser-chrome",
+      "webExposure": "none",
+      "basis": ["Ordinary isolated browsing context"],
+      "implementation": "src/core/browser-core.ts",
+      "verification": "tests/standards.test.ts",
+      "proposal": null
+    },
+    {
+      "id": "core-api",
+      "name": "Versioned core/shell API",
+      "classification": "trusted-browser-chrome",
+      "webExposure": "none",
+      "basis": ["Electron isolated worlds and IPC"],
+      "implementation": "src/main/preload.ts",
+      "verification": "tests/core-api.test.ts",
+      "proposal": null
+    },
+    {
+      "id": "sync-protocol",
+      "name": "Identity-free sync protocol",
+      "classification": "browser-service-protocol",
+      "webExposure": "none",
+      "basis": ["HTTPS", "JSON", "AES-256-GCM", "HKDF", "scrypt"],
+      "implementation": "src/sync/client.ts",
+      "verification": "tests/sync-client.test.ts",
+      "proposal": null
+    }
+  ]
+}

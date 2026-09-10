@@ -25,6 +25,7 @@ import { shellArgument } from './shell';
 import { ConfigStore, portableConfigPath, resolveConfigPath, type PlainConfig } from '../config/index';
 import { SyncClient, syncEndpoint } from '../sync/client';
 import { createSyncRealm, deriveSyncKeys } from '../sync/crypto';
+import { pageWebPreferences } from './web-boundary';
 
 app.setName('Astra');
 const testProfile = !app.isPackaged ? process.env.ASTRA_TEST_PROFILE : undefined;
@@ -291,7 +292,7 @@ function openPeek(url: string): void {
   closePeek();
   const tab = active(); if (!tab || !isWebURL(url)) return;
   state.peek = { url, title: new URL(url).hostname, loading: true };
-  peekView = new WebContentsView({ webPreferences: { session: pageSession(tab.workspaceId ?? DEFAULT_WORKSPACE.id), nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true, allowRunningInsecureContent: false, spellcheck: false, navigateOnDragDrop: false, safeDialogs: true, webviewTag: false } });
+  peekView = new WebContentsView({ webPreferences: pageWebPreferences(pageSession(tab.workspaceId ?? DEFAULT_WORKSPACE.id)) });
   win.contentView.addChildView(peekView);
   const wc = peekView.webContents;
   bindKeys(wc);
@@ -304,12 +305,7 @@ function openPeek(url: string): void {
   layout(); publish();
 }
 function createView(tab: Tab): WebContentsView {
-  const view = new WebContentsView({ webPreferences: {
-    session: pageSession(tab.workspaceId ?? DEFAULT_WORKSPACE.id),
-    nodeIntegration: false, contextIsolation: true, sandbox: true,
-    webSecurity: true, allowRunningInsecureContent: false, spellcheck: false,
-    navigateOnDragDrop: false, safeDialogs: true, webviewTag: false,
-  } });
+  const view = new WebContentsView({ webPreferences: pageWebPreferences(pageSession(tab.workspaceId ?? DEFAULT_WORKSPACE.id)) });
   views.set(tab.id, view);
   win.contentView.addChildView(view);
   const wc = view.webContents;
