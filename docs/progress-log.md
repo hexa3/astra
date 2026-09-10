@@ -79,22 +79,24 @@ The exact 1.0 source passed the Linux browser gate and the native Windows x64, m
 
 Published [Astra 1.0.0](https://github.com/hexa3/astra/releases/tag/v1.0.0) as a non-prerelease with AppImage and Debian packages for Linux, an NSIS installer for Windows x64, DMG/ZIP packages for both Apple Silicon and Intel macOS, and a checksum manifest. GitHub independently reports an uploaded SHA-256 digest for every asset matching the local manifest. The final Linux gate passed all source/native tests and the production audit after CI stopped consulting an unrelated hosted Google Chrome apt source whose changing index had caused two pre-test infrastructure failures. The native three-platform package run remains green. The release tag is annotated, `main` is clean and pushed, and the documented limitations remain intentionally visible rather than represented as unfinished working features.
 
-## 2026-09-10 15:50 GST — Phase 2 licensing audit
+## 2026-09-10 14:20 GST — Phase 2 licensing audit
 
 Started Phase 2 on `hour0-license-governance` from the verified 1.0 release. Git history identifies one author/copyright holder for all pre-Phase-2 commits, clearing the ownership prerequisite for a legitimate relicense. Replaced MIT with the unmodified MPL 2.0 text and changed package metadata and user-facing claims to describe its actual file-level copyleft scope. Existing third-party licenses remain separate. Next: attach SPDX notices to covered files and make the governance/funding commitments operational rather than aspirational.
 
-## 2026-09-10 16:29 GST — public governance mechanism
+## 2026-09-10 14:32 GST — public governance mechanism
 
 Established a foundation-style public charter while recording that Astra is currently an unincorporated project with one bootstrap steward. RFC and maintainer nomination forms, durable roll-call records, automatic bootstrap exit, employer concentration limits, conflict recusals, appeals, release requirements, protected privacy/funding changes, and an append-only treasury ledger make participation possible today. The charter does not pretend a legal entity or multi-person council already exists. Next: establish executable funding intake rules and repository labels, then run the full Phase 1 verification before merging the legal/governance slice.
 
-## 2026-09-10 16:36 GST — v1.4.0 legal and governance block
+## 2026-09-10 14:35 GST — v1.4.0 legal and governance block
 
 Completed the first Phase 2 block: MPL 2.0 license text and file identifiers, actionable public governance, and conflict-free funding intake rules. Created the corresponding live GitHub labels so committed issue forms route to real queues. Astra still reports its current unincorporated/single-steward status and zero-dollar balance instead of claiming institutions that do not exist. The unchanged Phase 1 product passes zero-diagnostic typechecking, 30 unit tests, production build, 14 Electron browser/privacy tests, native unload/hibernation, and native MV3 execution. Next: pin and verify a genuinely deterministic release artifact rather than relabeling platform installers whose upstream formats embed signing or timestamp metadata.
 
-## 2026-09-10 16:57 GST — reproducible runnable artifact
+## 2026-09-10 14:58 GST — reproducible runnable artifact
 
 Built the complete Linux x64 Electron application independently on the Arch host and inside the digest-pinned Node 24.8.0/Debian 12 container. The first comparison caught that `--clamp-mtime` preserved older host timestamps; removing it made every archive member use the commit epoch. The final independent archives are byte-identical at SHA-256 `345cd7990ae8d3604cb972ef309b72581da1bfe331b1d1dbf5aaea36467e05aa`, and the extracted container artifact launched, rendered a real test page, used an isolated profile, contained both licenses, and executed the command bar. CI now uses two clean builders and a separate compare job; the release workflow grants write permission only after that gate. Native installers remain explicitly outside the reproducibility claim. Next: push the branch and require live CI evidence before merging the block.
 
-## 2026-09-10 17:05 GST — v1.8.0 reproducibility gate green
+## 2026-09-10 15:03 GST — v1.8.0 reproducibility gate green
 
 GitHub run `34468814305` built the committed branch on two separate clean Ubuntu runners, verified each emitted checksum, downloaded both results into a third job, and passed a byte-for-byte archive and manifest comparison. Browser run `34468814217` passed the full Linux product gate. Native run `34468814370` then passed the complete source suite, packaging, and real packaged-browser smoke test on Windows x64, macOS Apple Silicon, and macOS Intel. This closes the reproducibility block without regressing Phase 1. Next: create the versioned core API boundary and prove it with a meaningfully different minimal shell.
+
+The five Phase 2 headings above were corrected in the next commit after comparison with Git's authoritative `+04:00` commit timestamps. Their first transcription was two hours ahead; no work or gap was removed.
