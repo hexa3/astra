@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: MPL-2.0
+.git
+.github
+dist
+node_modules
+playwright-report
+release
+test-results
+*.log
+.DS_Store

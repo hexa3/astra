@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: MPL-2.0
+# Node tag: 24.8.0-bookworm, index digest recorded 2026-09-10.
+FROM node@sha256:82a1d74c5988b72e839ac01c5bf0f7879a8ffd14ae40d7008016bca6ae12852b AS build
+
+ENV LANG=C \
+    LC_ALL=C \
+    TZ=UTC \
+    npm_config_audit=false \
+    npm_config_fund=false \
+    npm_config_update_notifier=false
+
+WORKDIR /source
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY . ./
+
+ARG SOURCE_DATE_EPOCH
+ENV SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH} \
+    ASTRA_REPRO_OUTPUT_DIR=/output
+RUN ./scripts/build-reproducible.sh
+
+FROM scratch AS artifact
+COPY --from=build /output/ /

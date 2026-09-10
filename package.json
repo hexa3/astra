@@ -25,6 +25,8 @@
     "test:live": "node scripts/smoke-live.mjs",
     "verify": "npm run check && npm test && npm run build && npm run test:e2e && npm run test:native",
     "package:linux": "npm run build && electron-builder --linux AppImage deb",
+    "package:reproducible": "./scripts/build-reproducible.sh",
+    "verify:reproducible": "node scripts/verify-reproducible.mjs",
     "package:mac": "npm run build && electron-builder --mac dmg zip",
     "package:win": "npm run build && electron-builder --win nsis",
     "package:dir": "npm run build && electron-builder --dir",
