@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 import { createHash } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import { createReadStream } from 'node:fs';
 import { basename } from 'node:path';
 
 const [firstPath, secondPath] = process.argv.slice(2);
@@ -9,8 +9,11 @@ if (!firstPath || !secondPath) {
   process.exit(2);
 }
 
-const digest = async (path) =>
-  createHash('sha256').update(await readFile(path)).digest('hex');
+const digest = async (path) => {
+  const hash = createHash('sha256');
+  for await (const chunk of createReadStream(path)) hash.update(chunk);
+  return hash.digest('hex');
+};
 
 const [firstDigest, secondDigest] = await Promise.all([
   digest(firstPath),

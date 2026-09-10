@@ -1,0 +1,82 @@
+# SPDX-License-Identifier: MPL-2.0
+name: Reproducible Linux artifact
+
+on:
+  push:
+    branches: [main, 'hour*']
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: reproducible-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Independent build ${{ matrix.copy }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        copy: [a, b]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build from the pinned container digest
+        run: npm run package:reproducible:container
+      - name: Verify the emitted manifest
+        working-directory: release/reproduced
+        run: sha256sum --check *.sha256
+      - name: Preserve this independent result
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: reproducible-${{ matrix.copy }}-${{ github.sha }}
+          path: release/reproduced/
+          if-no-files-found: error
+          retention-days: 14
+
+  compare:
+    name: Require byte-identical independent builds
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.0
+        with:
+          name: reproducible-a-${{ github.sha }}
+          path: verify/a
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.0
+        with:
+          name: reproducible-b-${{ github.sha }}
+          path: verify/b
+      - name: Compare every archive byte
+        run: |
+          npm run verify:reproducible -- verify/a/*.tar.gz verify/b/*.tar.gz
+          cmp verify/a/*.sha256 verify/b/*.sha256
+
+  published-release:
+    name: Compare the published release asset
+    if: github.event_name == 'release'
+    needs: compare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.0
+        with:
+          name: reproducible-a-${{ github.sha }}
+          path: verify/built
+      - name: Download the public artifact from this release
+        run: gh release download "$GITHUB_REF_NAME" --pattern '*-reproducible.tar.gz' --dir verify/published
+      - name: Compare source rebuild to public bytes
+        run: npm run verify:reproducible -- verify/built/*.tar.gz verify/published/*.tar.gz
