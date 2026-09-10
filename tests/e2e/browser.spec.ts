@@ -325,8 +325,10 @@ test('encrypted restart restores named workspaces and their lazy tabs', async ()
     const workspace = snapshot.workspaces.find(workspace => workspace.name === 'Private research')!;
     const saved = snapshot.tabs.find(tab => tab.url === `${origin}/second`)!;
     expect(saved.workspaceId).toBe(workspace.id); expect(saved.suspended).toBe(true);
-    await chrome.getByRole('combobox', { name: 'Workspace', exact: true }).selectOption(workspace.id);
-    await expect(chrome.getByRole('tab', { name: 'Second page', exact: false })).toBeVisible();
+    // The plain-text active_workspace is available before vault unlock, so this
+    // context is already selected. Activate the restored lazy tab directly.
+    await expect(chrome.getByRole('combobox', { name: 'Workspace', exact: true })).toHaveValue(workspace.id);
+    await chrome.getByRole('tab', { name: 'Second page', exact: false }).click();
     await expect.poll(async () => app.evaluate(({ webContents }, url) => webContents.getAllWebContents().some(contents => contents.getURL() === url), `${origin}/second`)).toBe(true);
   } finally { await app.close(); }
 });
