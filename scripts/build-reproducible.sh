@@ -63,7 +63,6 @@ fi
 tar --sort=name \
   --format=gnu \
   --mtime="@$ASTRA_EPOCH" \
-  --clamp-mtime \
   --owner=0 \
   --group=0 \
   --numeric-owner \
