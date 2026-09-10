@@ -16,6 +16,25 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  sync-server:
+    name: Self-hosted sync image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build pinned reference server
+        run: docker build -f sync-server/Dockerfile -t astra-sync-server:ci .
+      - name: Verify non-root server health
+        run: |
+          docker run --rm -d --name astra-sync-ci astra-sync-server:ci
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            if docker exec astra-sync-ci node -e "fetch('http://127.0.0.1:8787/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"; then break; fi
+            sleep 1
+          done
+          test "$(docker inspect astra-sync-ci --format '{{.Config.User}}')" = node
+          docker exec astra-sync-ci node -e "fetch('http://127.0.0.1:8787/health').then(r=>{if(r.status!==200)process.exit(1)}).catch(()=>process.exit(1))"
+          docker stop astra-sync-ci
+
   linux:
     name: Linux sandboxed browser
     runs-on: ubuntu-24.04
