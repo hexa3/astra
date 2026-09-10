@@ -1,0 +1,42 @@
+name: Request for Comments
+description: Propose an architectural, policy, compatibility, funding, or governance change
+title: "RFC: "
+labels: ["rfc", "governance"]
+body:
+  - type: markdown
+    attributes:
+      value: The review clocks and voting rules are in GOVERNANCE.md. Accepted proposals also become durable files under governance/rfcs/.
+  - type: textarea
+    id: problem
+    attributes:
+      label: User problem
+      description: Describe the observable problem, not only a preferred implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: mechanism
+    attributes:
+      label: Proposed mechanism and alternatives
+      description: Explain the change and viable alternatives.
+    validations:
+      required: true
+  - type: textarea
+    id: impacts
+    attributes:
+      label: Privacy, security, accessibility, and standards impact
+      description: State data flows and compatibility effects explicitly.
+    validations:
+      required: true
+  - type: textarea
+    id: funding
+    attributes:
+      label: Funding and conflicts
+      description: Name relevant employers, funders, restrictions, or state none.
+    validations:
+      required: true
+  - type: textarea
+    id: rollback
+    attributes:
+      label: Migration and rollback
+    validations:
+      required: true

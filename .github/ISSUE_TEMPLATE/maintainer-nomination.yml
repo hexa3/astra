@@ -1,0 +1,26 @@
+name: Maintainer nomination
+description: Nominate an eligible contributor under GOVERNANCE.md
+title: "Maintainer nomination: "
+labels: ["governance", "maintainer-vote"]
+body:
+  - type: input
+    id: nominee
+    attributes:
+      label: Nominee
+      description: GitHub username; self-nominations are allowed.
+    validations:
+      required: true
+  - type: textarea
+    id: record
+    attributes:
+      label: Eligibility record
+      description: Link qualifying contributions and dates.
+    validations:
+      required: true
+  - type: textarea
+    id: statement
+    attributes:
+      label: Nominee statement and conflicts
+      description: The nominee should confirm willingness and disclose relevant affiliations.
+    validations:
+      required: true

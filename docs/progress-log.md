@@ -82,3 +82,7 @@ Published [Astra 1.0.0](https://github.com/hexa3/astra/releases/tag/v1.0.0) as a
 ## 2026-09-10 15:50 GST — Phase 2 licensing audit
 
 Started Phase 2 on `hour0-license-governance` from the verified 1.0 release. Git history identifies one author/copyright holder for all pre-Phase-2 commits, clearing the ownership prerequisite for a legitimate relicense. Replaced MIT with the unmodified MPL 2.0 text and changed package metadata and user-facing claims to describe its actual file-level copyleft scope. Existing third-party licenses remain separate. Next: attach SPDX notices to covered files and make the governance/funding commitments operational rather than aspirational.
+
+## 2026-09-10 16:29 GST — public governance mechanism
+
+Established a foundation-style public charter while recording that Astra is currently an unincorporated project with one bootstrap steward. RFC and maintainer nomination forms, durable roll-call records, automatic bootstrap exit, employer concentration limits, conflict recusals, appeals, release requirements, protected privacy/funding changes, and an append-only treasury ledger make participation possible today. The charter does not pretend a legal entity or multi-person council already exists. Next: establish executable funding intake rules and repository labels, then run the full Phase 1 verification before merging the legal/governance slice.
