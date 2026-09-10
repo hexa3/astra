@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { restoreSavedTabs } from '../src/main/session-state';
+import { restoreSavedTabs } from '../src/core/session-state';
 
 const workspaces = [{id: 'personal', name: 'Personal'}, {id: 'work', name: 'Work'}];
 test('saved tabs migrate old profiles and keep workspace membership', () => {

@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { resolve } from 'node:path';
-import { profileArgument } from '../src/main/profile';
+import { profileArgument } from '../src/core/profile';
 
 test('explicit profiles accept absolute directories and ignore unrelated arguments', () => {
   const directory = resolve('isolated-profile');

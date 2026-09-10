@@ -3,7 +3,7 @@ import { app, WebContentsView } from 'electron';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { join } from 'node:path';
-import { RamSessions } from '../../src/main/ram-sessions';
+import { RamSessions } from '../../src/core/ram-sessions';
 
 app.setPath('userData', process.env.ASTRA_NATIVE_PROFILE!);
 app.enableSandbox();

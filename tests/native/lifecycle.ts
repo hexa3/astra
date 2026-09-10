@@ -2,9 +2,9 @@
 import { app, BrowserWindow, WebContentsView, dialog } from 'electron';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import { requestPageClose, installNavigationConfirmation } from '../../src/main/lifecycle';
-import { Hibernator } from '../../src/main/hibernation';
-import type { BrowserState, Tab } from '../../src/shared/types';
+import { requestPageClose, installNavigationConfirmation } from '../../src/core/lifecycle';
+import { Hibernator } from '../../src/core/hibernation';
+import type { BrowserState, Tab } from '../../src/core/api';
 
 app.setPath('userData', process.env.ASTRA_NATIVE_PROFILE!);
 app.enableSandbox();

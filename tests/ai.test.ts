@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { LocalExtractiveProvider, modelProviders } from '../src/main/ai';
+import { LocalExtractiveProvider, modelProviders } from '../src/core/ai';
 
 const page = { url: 'https://example.test/', title: 'Local AI', text: 'Astra blocks common tracker requests by default. Browser records are encrypted before persistence. Workspaces keep website sessions separate. The local assistant sends no page text over the network.' };
 

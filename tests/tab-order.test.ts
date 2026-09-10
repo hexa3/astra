@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { moveTab } from '../src/shared/tab-order';
-import { createTab } from '../src/main/session-state';
+import { createTab } from '../src/core/session-state';
 
 const tabs = [createTab('', 'A', 'personal'), createTab('', 'Work', 'work'), createTab('', 'B', 'personal'), createTab('', 'C', 'personal')];
 test('tab ordering moves both directions without changing other workspace slots', () => {

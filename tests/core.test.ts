@@ -2,9 +2,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
-import { seal, unseal } from '../src/main/crypto';
+import { seal, unseal } from '../src/core/crypto';
 import { resolveAddress, isWebURL } from '../src/shared/navigation';
-import { isThirdParty, isTracker } from '../src/main/privacy';
+import { isThirdParty, isTracker } from '../src/core/privacy';
 
 test('addresses support sites and search while rejecting privileged protocols', () => {
   assert.equal(resolveAddress('example.org'), 'https://example.org/');

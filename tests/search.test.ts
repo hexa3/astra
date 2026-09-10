@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { fuzzyScore, searchBrowser } from '../src/shared/search';
-import type { BrowserState } from '../src/shared/types';
+import type { BrowserState } from '../src/core/api';
 const state: BrowserState = { tabs: [], activeId: '', workspaces: [{id: 'personal', name: 'Personal'}, {id: 'work', name: 'Work'}], activeWorkspaceId: 'personal', bookmarks: [], history: [], storage: 'memory', storageMessage: '', vaultLocked: false, backgroundLimit: 6, theme: 'dark', panel: 'none' };
 
 test('fuzzy ranking handles abbreviations, accents and exact matches', () => {

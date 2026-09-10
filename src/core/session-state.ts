@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 import { randomUUID } from 'node:crypto';
-import type { Tab, Workspace } from '../core/api';
+import type { Tab, Workspace } from './api';
 import { isWebURL } from '../shared/navigation';
 
 export function createTab(url: string, title: string, workspaceId: string, id: string = randomUUID()): Tab {

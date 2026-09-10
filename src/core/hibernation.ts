@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 import type { NavigationEntry, WebContentsView } from 'electron';
-import type { BrowserState, Tab } from '../core/api';
+import type { BrowserState, Tab } from './api';
 
 interface SleepingPage { entries: NavigationEntry[]; index: number; x: number; y: number }
 interface PageActivity { edited: boolean; x: number; y: number }
