@@ -104,3 +104,7 @@ The five Phase 2 headings above were corrected in the next commit after comparis
 ## 2026-09-10 15:20 GST — versioned core and second shell
 
 Moved every privileged implementation module under `src/core/`; `src/main/` now contains only the Electron bootstrap and context-isolated preload. API 2.0 centralizes versioned channels, capability discovery, the command vocabulary, snapshots, subscriptions, and validated shell insets. Architecture tests prevent imports across the boundary. The minimal shell is a separate Vite/Svelte entry with one 52-pixel horizontal bar, no sidebar or command palette, and its own styling. Its Electron test queried real API 2.0 capabilities, navigated a native page, and managed tabs. A full run then exposed state-driven layout synchronization clearing command errors; the focused vault and rejected-navigation tests pass after separating that internal layout call from the user-command error helper. Next: rerun the complete 15-test Electron and native suites, then obtain live CI evidence for the core split.
+
+## 2026-09-10 15:22 GST — core/shell local gate green
+
+The corrected core/shell slice passes zero-diagnostic typechecking, 36 unit/architecture tests, both Vite shell builds, all 15 Electron browser/privacy tests, native unload/hibernation, and native MV3 worker/content-script execution. The new minimal test is part of the ordinary product gate rather than a special demo. Next: push for clean Linux, reproducibility, Windows, and both macOS architecture evidence before merging and tagging the block.
