@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.4.0 — 2026-09-10
+
+- Relicensed Astra-owned files under MPL 2.0 file-level copyleft and attached SPDX identifiers to covered source.
+- Established public RFCs, roll-call votes, contributor-based maintainer eligibility, conflict recusals, appeals, protected privacy/funding decisions, and an automatic end to the single-maintainer bootstrap.
+- Opened usable GitHub proposal paths for governance, nominations, grants, donation infrastructure, and enterprise support.
+- Defined conflict-free donation, grant, and support rules with closed intake until custody passes public approval, backed by an append-only treasury ledger with a verified opening balance of USD 0.
+
 ## 1.0.0 — 2026-09-09
 
 - Shipped sandboxed Chromium browsing, navigation, bookmarks and encrypted history/session records.
