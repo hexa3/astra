@@ -28,6 +28,6 @@ docker run --rm \
   --user "$(id -u):$(id -g)" \
   --volume "$ASTRA_OUTPUT_DIR:/result" \
   "$ASTRA_IMAGE" \
-  sh -c 'cp /output/. /result/'
+  sh -c 'cp -R /output/. /result/'
 
 echo "Reproduced Astra commit $ASTRA_COMMIT in $ASTRA_OUTPUT_DIR"
