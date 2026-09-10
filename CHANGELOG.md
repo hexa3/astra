@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.16.0 — 2026-09-10
+
+- Moved non-secret settings, workspace/session definitions, extension paths, enabled states, and reviewed manifest access into validated, atomic TOML under the platform config directory.
+- Added the offline `astractl` executable for config dumps, reviewed MV3 install/list/remove, and workspace list/create/switch/export operations.
+- Kept history, bookmarks, live crash-recovery tabs, Boost source, credentials, website data, passphrases, and encryption keys outside version-controlled config.
+- Added safe migration from 1.0 vault preferences, explicit startup-session behavior, portable `$HOME` extension paths, invalid-edit preservation, and runtime permission-change disabling.
+- Verified the change with 45 unit tests, 16 real Electron browser/privacy tests, native unload/hibernation and MV3 tests, a zero-finding production audit, and a reproducible runnable Linux build.
+
 ## 1.12.0 — 2026-09-10
 
 - Separated privileged browser implementation into `src/core/`, Electron bootstrap/preload into `src/main/`, and unprivileged front ends into `src/shells/`.
