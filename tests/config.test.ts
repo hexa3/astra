@@ -42,10 +42,13 @@ test('startup pages reject URL material that is unsafe for dotfiles', () => {
 });
 
 test('config and extension paths are predictable without embedding a username', () => {
-  assert.equal(configDirectory({}, '/home/alice'), '/home/alice/.config/astra');
-  assert.equal(configDirectory({ XDG_CONFIG_HOME: '/tmp/config' }, '/home/alice'), '/tmp/config/astra');
-  assert.equal(portableConfigPath('/home/alice/extensions/tool', '/home/alice'), '$HOME/extensions/tool');
-  assert.equal(resolveConfigPath('$HOME/extensions/tool', '/home/alice'), '/home/alice/extensions/tool');
+  const userHome = join(tmpdir(), 'alice');
+  const xdg = join(tmpdir(), 'config');
+  const extension = join(userHome, 'extensions', 'tool');
+  assert.equal(configDirectory({}, userHome), join(userHome, '.config', 'astra'));
+  assert.equal(configDirectory({ XDG_CONFIG_HOME: xdg }, userHome), join(xdg, 'astra'));
+  assert.equal(portableConfigPath(extension, userHome), '$HOME/extensions/tool');
+  assert.equal(resolveConfigPath('$HOME/extensions/tool', userHome), extension);
   assert.throws(() => configDirectory({ ASTRA_CONFIG_DIR: 'relative' }, '/home/alice'), /absolute/);
 });
 
