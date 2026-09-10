@@ -47,7 +47,8 @@
   }
   function focusAddress() { addressInput?.focus(); addressInput?.select(); }
   function configureShell(next: BrowserState) {
-    void run({ type: 'configure-shell', insets: { top: 88, right: next.ai?.open ? AI_WIDTH : 0, bottom: 24, left: sidebarWidth(next.sidebarCollapsed) } });
+    void window.astra.command({ type: 'configure-shell', insets: { top: 88, right: next.ai?.open ? AI_WIDTH : 0, bottom: 24, left: sidebarWidth(next.sidebarCollapsed) } })
+      .catch(cause => error = String(cause));
   }
   onMount(() => {
     if (window.astra.version !== CORE_API_VERSION) {
