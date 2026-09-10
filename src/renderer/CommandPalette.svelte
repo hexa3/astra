@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: MPL-2.0 -->
 <script lang="ts">
   import { onMount, tick } from 'svelte';
-  import type { BrowserState, Command } from '../shared/types';
+  import type { BrowserState, Command } from '../core/api';
   import { searchBrowser, type SearchResult } from '../shared/search';
   import Icon from './Icon.svelte';
   export let state: BrowserState;

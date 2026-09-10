@@ -19,7 +19,8 @@ import { profileArgument } from './profile';
 import { inspectExtension, samePermissions } from './extension-manifest';
 import { RamSessions } from './ram-sessions';
 import { modelProviders, type PageDocument } from './ai';
-import type { Boost, BrowserState, Command, Entry, ExtensionRegistration, Tab } from '../shared/types';
+import { CORE_API_VERSION, CORE_COMMAND_TYPES, type Boost, type BrowserState, type Command, type Entry, type ExtensionRegistration, type ShellVariant, type Tab } from '../core/api';
+import { CORE_CHANNELS } from '../core/protocol';
 
 app.setName('Astra');
 const testProfile = !app.isPackaged ? process.env.ASTRA_TEST_PROFILE : undefined;
@@ -53,6 +54,7 @@ let peekTimer: ReturnType<typeof setTimeout> | undefined;
 let altHeld = false;
 const hoveredLinks = new Map<string, string>();
 const chromeURL = pathToFileURL(join(__dirname, '../renderer/index.html')).href;
+const shellVariant: ShellVariant = 'default';
 const active = () => state.tabs.find(tab => tab.id === state.activeId);
 const contents = () => views.get(state.activeId)?.webContents;
 const splitContains = (id: string) => state.split?.leftId === id || state.split?.rightId === id;
@@ -151,7 +153,7 @@ async function applyBoost(tab: Tab, wc: WebContents): Promise<void> {
 
 function publish(): void {
   if (!win || win.isDestroyed()) return;
-  win.webContents.send('astra:state', state);
+  win.webContents.send(CORE_CHANNELS.state, state);
 }
 function schedulePublish(): void {
   if (!publishTimer) publishTimer = setTimeout(() => { publishTimer = undefined; publish(); }, 100);
@@ -186,7 +188,7 @@ function layout(): void {
   }
 }
 function shortcut(name: string): void {
-  win.webContents.focus(); win.webContents.send('astra:shortcut', name);
+  win.webContents.focus(); win.webContents.send(CORE_CHANNELS.shortcut, name);
 }
 function bindKeys(wc: WebContents): void {
   wc.on('before-input-event', (event, input) => {
@@ -598,8 +600,12 @@ app.whenReady().then(async () => {
   win.webContents.on('will-navigate', event => event.preventDefault());
   bindKeys(win.webContents);
   pageSession(DEFAULT_WORKSPACE.id);
-  ipcMain.handle('astra:snapshot', event => { authorize(event); return state; });
-  ipcMain.handle('astra:command', async (event, command) => { authorize(event); await dispatch(validateCommand(command)); });
+  ipcMain.handle(CORE_CHANNELS.capabilities, event => {
+    authorize(event);
+    return { apiVersion: CORE_API_VERSION, shell: shellVariant, commands: CORE_COMMAND_TYPES };
+  });
+  ipcMain.handle(CORE_CHANNELS.snapshot, event => { authorize(event); return state; });
+  ipcMain.handle(CORE_CHANNELS.command, async (event, command) => { authorize(event); await dispatch(validateCommand(command)); });
   win.on('resize', layout);
   win.on('close', event => {
     if (quitting) return;

@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: MPL-2.0 -->
 <script lang="ts">
   import { onMount } from 'svelte';
-  import type { BrowserState, Command } from '../shared/types';
+  import { CORE_API_VERSION, type BrowserState, type Command } from '../core/api';
   import Icon from './Icon.svelte';
   import PrivacyPanel from './PrivacyPanel.svelte';
   import WorkspacePanel from './WorkspacePanel.svelte';
@@ -47,6 +47,10 @@
   }
   function focusAddress() { addressInput?.focus(); addressInput?.select(); }
   onMount(() => {
+    if (window.astra.version !== CORE_API_VERSION) {
+      error = `Core API mismatch: shell ${CORE_API_VERSION}, core ${window.astra.version}`;
+      return;
+    }
     const offState = window.astra.onState(receive);
     const offShortcut = window.astra.onShortcut(name => { if (name === 'address') focusAddress(); });
     window.astra.snapshot().then(receive).catch(cause => error = String(cause));

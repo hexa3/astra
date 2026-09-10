@@ -1,18 +1,21 @@
 // SPDX-License-Identifier: MPL-2.0
 import { contextBridge, ipcRenderer } from 'electron';
-import type { AstraAPI, BrowserState } from '../shared/types';
-const api: AstraAPI = {
-  snapshot: () => ipcRenderer.invoke('astra:snapshot'),
-  command: command => ipcRenderer.invoke('astra:command', command),
+import { CORE_API_VERSION, type BrowserState, type CoreAPI } from '../core/api';
+import { CORE_CHANNELS } from '../core/protocol';
+const api: CoreAPI = {
+  version: CORE_API_VERSION,
+  capabilities: () => ipcRenderer.invoke(CORE_CHANNELS.capabilities),
+  snapshot: () => ipcRenderer.invoke(CORE_CHANNELS.snapshot),
+  command: command => ipcRenderer.invoke(CORE_CHANNELS.command, command),
   onState: callback => {
     const listener = (_event: Electron.IpcRendererEvent, state: BrowserState) => callback(state);
-    ipcRenderer.on('astra:state', listener);
-    return () => ipcRenderer.removeListener('astra:state', listener);
+    ipcRenderer.on(CORE_CHANNELS.state, listener);
+    return () => ipcRenderer.removeListener(CORE_CHANNELS.state, listener);
   },
   onShortcut: callback => {
     const listener = (_event: Electron.IpcRendererEvent, shortcut: string) => callback(shortcut);
-    ipcRenderer.on('astra:shortcut', listener);
-    return () => ipcRenderer.removeListener('astra:shortcut', listener);
+    ipcRenderer.on(CORE_CHANNELS.shortcut, listener);
+    return () => ipcRenderer.removeListener(CORE_CHANNELS.shortcut, listener);
   },
 };
 contextBridge.exposeInMainWorld('astra', api);

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
-import type { AstraAPI } from '../shared/types';
+import type { CoreAPI } from '../core/api';
 declare global {
-  interface Window { astra: AstraAPI }
+  interface Window { astra: CoreAPI }
   const __ASTRA_VERSION__: string;
 }

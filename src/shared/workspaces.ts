@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-import type { Workspace } from './types';
+import type { Workspace } from '../core/api';
 export const DEFAULT_WORKSPACE: Workspace = { id: 'personal', name: 'Personal' };
 
 export function workspaceName(value: string): string {

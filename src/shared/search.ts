@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-import type { BrowserState, Command } from './types';
+import type { BrowserState, Command } from '../core/api';
 import { resolveAddress } from './navigation';
 
 export interface SearchResult {

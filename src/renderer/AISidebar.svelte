@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: MPL-2.0 -->
 <script lang="ts">
-  import type { AIState, Command } from '../shared/types';
+  import type { AIState, Command } from '../core/api';
   import Icon from './Icon.svelte';
   export let ai: AIState;
   export let hasPage: boolean;

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 import type { Session } from 'electron';
 import { getDomain } from 'tldts';
-import type { Tab } from '../shared/types';
+import type { Tab } from '../core/api';
 
 // A deliberately small, locally bundled seed list. No remote list fetches.
 export const TRACKERS = new Set([

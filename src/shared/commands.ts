@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-import type { Command } from './types';
+import type { Command } from '../core/api';
 import { workspaceName } from './workspaces';
 
 /** Validate every command at the process boundary, including trusted UI mistakes. */

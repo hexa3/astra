@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-import type { Tab } from './types';
+import type { Tab } from '../core/api';
 
 /** Reorder within a workspace while preserving every other workspace's slots. */
 export function moveTab(tabs: Tab[], id: string, index: number): Tab[] {

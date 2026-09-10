@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: MPL-2.0 -->
 <script lang="ts">
-  import type { BrowserState, Command } from '../shared/types';
+  import type { BrowserState, Command } from '../core/api';
   import Icon from './Icon.svelte';
   export let state: BrowserState;
   export let run: (command: Command) => Promise<boolean>;

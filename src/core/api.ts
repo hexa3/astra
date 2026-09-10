@@ -1,4 +1,16 @@
 // SPDX-License-Identifier: MPL-2.0
+
+/** Stable shell-to-core API. Breaking changes require a new major channel. */
+export const CORE_API_VERSION = '2.0' as const;
+
+export type ShellVariant = 'default' | 'minimal';
+
+export interface CoreCapabilities {
+  apiVersion: typeof CORE_API_VERSION;
+  shell: ShellVariant;
+  commands: readonly Command['type'][];
+}
+
 export interface Tab {
   id: string; url: string; title: string; loading: boolean;
   workspaceId?: string;
@@ -52,7 +64,20 @@ export type Command =
   | { type: 'close-peek' | 'open-peek' }
   | { type: 'ai-ask'; question: string }
   | { type: 'panel'; value: BrowserState['panel'] };
-export interface AstraAPI {
+
+export const CORE_COMMAND_TYPES = [
+  'navigate', 'new-tab', 'activate-tab', 'close-tab', 'split-tab', 'move-tab',
+  'back', 'forward', 'reload', 'stop', 'bookmark', 'clear-history',
+  'toggle-sidebar', 'toggle-split', 'remove-bookmark', 'unlock-vault',
+  'background-limit', 'create-workspace', 'rename-workspace', 'switch-workspace',
+  'theme', 'accent', 'load-extension', 'toggle-extension', 'remove-extension',
+  'save-boost', 'remove-boost', 'toggle-ai', 'ai-summarize', 'close-peek',
+  'open-peek', 'ai-ask', 'panel',
+] as const satisfies readonly Command['type'][];
+
+export interface CoreAPI {
+  readonly version: typeof CORE_API_VERSION;
+  capabilities(): Promise<CoreCapabilities>;
   snapshot(): Promise<BrowserState>;
   command(command: Command): Promise<void>;
   onState(callback: (state: BrowserState) => void): () => void;
