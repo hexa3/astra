@@ -26,6 +26,7 @@
     "verify": "npm run check && npm test && npm run build && npm run test:e2e && npm run test:native",
     "package:linux": "npm run build && electron-builder --linux AppImage deb",
     "package:reproducible": "./scripts/build-reproducible.sh",
+    "package:reproducible:container": "./scripts/build-reproducible-container.sh",
     "verify:reproducible": "node scripts/verify-reproducible.mjs",
     "package:mac": "npm run build && electron-builder --mac dmg zip",
     "package:win": "npm run build && electron-builder --win nsis",

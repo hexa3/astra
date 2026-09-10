@@ -19,5 +19,6 @@ ENV SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH} \
     ASTRA_REPRO_OUTPUT_DIR=/output
 RUN ./scripts/build-reproducible.sh
 
-FROM scratch AS artifact
-COPY --from=build /output/ /
+FROM node@sha256:82a1d74c5988b72e839ac01c5bf0f7879a8ffd14ae40d7008016bca6ae12852b AS artifact
+COPY --from=build /output/ /output/
+CMD ["true"]
