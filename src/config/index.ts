@@ -34,6 +34,10 @@ export interface ExtensionDeclaration {
   id: string;
   directory: string;
   enabled: boolean;
+  name: string;
+  version: string;
+  permissions: string[];
+  hosts: string[];
 }
 export interface ExtensionsConfig { extensions: ExtensionDeclaration[] }
 export interface PlainConfig {
@@ -161,7 +165,13 @@ function parseExtensions(raw: unknown): ExtensionsConfig {
     const directory = text(extension.directory, `extension ${index + 1} directory`, 4096);
     resolveConfigPath(directory);
     if (typeof extension.enabled !== 'boolean') throw new Error(`extension ${index + 1} enabled must be true or false.`);
-    return { id: identifier(extension.id, `extension ${index + 1} id`), directory, enabled: extension.enabled };
+    return {
+      id: identifier(extension.id, `extension ${index + 1} id`), directory, enabled: extension.enabled,
+      name: text(extension.name, `extension ${index + 1} name`, 200),
+      version: text(extension.version, `extension ${index + 1} version`, 64),
+      permissions: list(extension.permissions, `extension ${index + 1} permissions`).map((permission, permissionIndex) => text(permission, `extension ${index + 1} permission ${permissionIndex + 1}`, 2048)),
+      hosts: list(extension.hosts, `extension ${index + 1} hosts`).map((host, hostIndex) => text(host, `extension ${index + 1} host ${hostIndex + 1}`, 2048)),
+    };
   });
   if (new Set(extensions.map(extension => extension.id)).size !== extensions.length) throw new Error('Extension ids must be unique.');
   return { extensions };
@@ -196,7 +206,7 @@ export class ConfigStore {
     const portable = portableConfigPath(resolve(directory));
     const existing = config.extensions.find(extension => resolveConfigPath(extension.directory) === resolve(directory));
     if (existing) return existing;
-    const declaration = { id: randomUUID(), directory: portable, enabled: false };
+    const declaration = { id: randomUUID(), directory: portable, enabled: false, name: 'Unreviewed extension', version: '?', permissions: [], hosts: [] };
     config.extensions.push(declaration);
     this.writeExtensions(config);
     return declaration;

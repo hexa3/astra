@@ -65,3 +65,16 @@ test('workspace sessions can select a declared active session', () => {
     assert.match(invalid.warnings[0], /active_session/);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
+
+test('extension TOML retains the reviewed permission boundary', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'astra-config-extension-'));
+  try {
+    const store = new ConfigStore(directory);
+    store.load();
+    store.writeExtensions({ extensions: [{ id: 'reader', directory: '$HOME/extensions/reader', enabled: true, name: 'Reader', version: '1.0.0', permissions: ['storage'], hosts: ['https://example.com/*'] }] });
+    const text = readFileSync(join(directory, 'extensions.toml'), 'utf8');
+    assert.match(text, /permissions = \[ "storage" \]/);
+    assert.match(text, /hosts = \[ "https:\/\/example\.com\/\*" \]/);
+    assert.deepEqual(store.load().extensions.extensions[0].permissions, ['storage']);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});

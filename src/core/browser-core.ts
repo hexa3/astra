@@ -188,7 +188,7 @@ function persistPlainConfig(part: 'settings' | 'workspaces' | 'extensions' | 'al
     configStore.writeWorkspaces(plainConfig.workspaces);
   }
   if (part === 'extensions' || part === 'all') {
-    plainConfig.extensions.extensions = (state.extensions ?? []).map(extension => ({ id: extension.id, directory: portableConfigPath(resolve(extension.directory)), enabled: extension.enabled }));
+    plainConfig.extensions.extensions = (state.extensions ?? []).map(extension => ({ id: extension.id, directory: portableConfigPath(resolve(extension.directory)), enabled: extension.enabled, name: extension.name, version: extension.version, permissions: extension.permissions, hosts: extension.hosts }));
     configStore.writeExtensions(plainConfig.extensions);
   }
 }
@@ -198,8 +198,11 @@ function forgetLegacyPlainConfig(): void {
 function configuredExtensions(config: PlainConfig): ExtensionRegistration[] {
   return config.extensions.extensions.map(declaration => {
     const directory = resolveConfigPath(declaration.directory);
-    try { return { id: declaration.id, directory, ...inspectExtension(directory), enabled: declaration.enabled }; }
-    catch (cause) { return { id: declaration.id, directory, name: declaration.id, version: '?', permissions: [], hosts: [], enabled: false, error: cause instanceof Error ? cause.message : String(cause) }; }
+    try {
+      const current = inspectExtension(directory);
+      if (!samePermissions(declaration, current)) return { ...declaration, directory, enabled: false, error: 'Permissions changed on disk. Remove and review this extension again.' };
+      return { ...declaration, directory, enabled: declaration.enabled };
+    } catch (cause) { return { ...declaration, directory, enabled: false, error: cause instanceof Error ? cause.message : String(cause) }; }
   });
 }
 function layout(): void {
@@ -618,7 +621,7 @@ app.whenReady().then(async () => {
   plainConfig = configStore.load({
     settings: { theme: vault.get('theme', 'system'), accent: vault.get('accent', '#e5231b'), backgroundLimit: vault.get('background-limit', 6), sidebarCollapsed: vault.get('sidebar-collapsed', false) },
     workspaces: { activeWorkspaceId: legacyActiveWorkspace, workspaces: legacyWorkspaces.map(workspace => ({ id: workspace.id, name: workspace.name, startupPages: [] })), sessions: [] },
-    extensions: { extensions: vault.get<ExtensionRegistration[]>('extensions', []).map(extension => ({ id: extension.id, directory: portableConfigPath(resolve(extension.directory)), enabled: false })) },
+    extensions: { extensions: vault.get<ExtensionRegistration[]>('extensions', []).map(extension => ({ id: extension.id, directory: portableConfigPath(resolve(extension.directory)), enabled: false, name: extension.name, version: extension.version, permissions: extension.permissions, hosts: extension.hosts })) },
   });
   forgetLegacyPlainConfig();
   const configuredWorkspaces = plainConfig.workspaces.workspaces.map(({ id, name }) => ({ id, name }));

@@ -69,8 +69,8 @@ export function runCli(argv: string[], io: CliIO): number {
       const directory = resolve(requireValue(values[0], 'Extension directory'));
       const summary = inspectExtension(directory);
       const existing = config.extensions.extensions.find(item => resolveConfigPath(item.directory) === directory);
-      const declaration = existing ?? { id: randomUUID(), directory: portableConfigPath(directory), enabled: true };
-      declaration.enabled = true;
+      const declaration = existing ?? { id: randomUUID(), directory: portableConfigPath(directory), enabled: true, ...summary };
+      Object.assign(declaration, summary, { enabled: true });
       if (!existing) config.extensions.extensions.push(declaration);
       store.writeExtensions(config.extensions);
       io.out([`Installed ${summary.name} ${summary.version} as ${declaration.id}.`, `Browser permissions: ${summary.permissions.join(', ') || 'none'}`, `Site access: ${summary.hosts.join(', ') || 'none'}`, 'Restart Astra to apply this declaration.'].join('\n'));
@@ -90,7 +90,7 @@ export function runCli(argv: string[], io: CliIO): number {
     if (group === 'workspace' && action === 'create') {
       const name = values.join(' ').trim();
       requireValue(name, 'Workspace name');
-      if (name.length > 80 || /[\u0000-\u001f\u007f]/.test(name)) throw new Error('Workspace name must be at most 80 printable characters.');
+      if (name.length > 60 || /[\u0000-\u001f\u007f]/.test(name)) throw new Error('Workspace name must be at most 60 printable characters.');
       if (config.workspaces.workspaces.some(item => item.name.toLocaleLowerCase() === name.toLocaleLowerCase())) throw new Error('A workspace with this name already exists.');
       const id = workspaceId(name, new Set(config.workspaces.workspaces.map(item => item.id)));
       config.workspaces.workspaces.push({ id, name, startupPages: [] });
