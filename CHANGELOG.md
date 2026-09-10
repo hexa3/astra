@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.8.0 — 2026-09-10
+
+- Added a complete runnable Linux x64 archive whose Electron runtime, app tree, metadata, and compression are canonicalized.
+- Pinned the reference build to an exact Node 24.8.0/Debian container digest and lockfile/checksum-verified inputs.
+- Added two independent CI builders with a byte comparison gate and a write-isolated workflow that cannot publish until both results match.
+- Published exact third-party reproduction and failure-investigation steps while explicitly excluding native installer formats from the current bit-reproducibility claim.
+
 ## 1.4.0 — 2026-09-10
 
 - Relicensed Astra-owned files under MPL 2.0 file-level copyleft and attached SPDX identifiers to covered source.
