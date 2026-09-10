@@ -4,9 +4,19 @@ export const STATUS_HEIGHT = 24;
 export const AI_WIDTH = 336;
 export const sidebarWidth = (collapsed = false): number => collapsed ? 56 : 232;
 
+export interface Insets { top: number; right: number; bottom: number; left: number }
+
+export function contentBounds(width: number, height: number, insets: Insets) {
+  return {
+    x: insets.left,
+    y: insets.top,
+    width: Math.max(0, width - insets.left - insets.right),
+    height: Math.max(0, height - insets.top - insets.bottom),
+  };
+}
+
 export function pageBounds(width: number, height: number, collapsed = false, aiOpen = false) {
-  const x = sidebarWidth(collapsed);
-  return { x, y: CHROME_TOP, width: Math.max(0, width - x - (aiOpen ? AI_WIDTH : 0)), height: Math.max(0, height - CHROME_TOP - STATUS_HEIGHT) };
+  return contentBounds(width, height, { top: CHROME_TOP, right: aiOpen ? AI_WIDTH : 0, bottom: STATUS_HEIGHT, left: sidebarWidth(collapsed) });
 }
 
 export function splitBounds(bounds: ReturnType<typeof pageBounds>) {

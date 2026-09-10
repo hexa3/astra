@@ -14,13 +14,14 @@ import { isWebURL, resolveAddress } from '../shared/navigation';
 import { validateCommand } from '../shared/commands';
 import { DEFAULT_WORKSPACE, restoreWorkspaces, workspacePartition } from '../shared/workspaces';
 import { moveTab } from '../shared/tab-order';
-import { pageBounds, peekBounds, splitBounds } from '../shared/layout';
+import { contentBounds, peekBounds, splitBounds } from '../shared/layout';
 import { profileArgument } from './profile';
 import { inspectExtension, samePermissions } from './extension-manifest';
 import { RamSessions } from './ram-sessions';
 import { modelProviders, type PageDocument } from './ai';
 import { CORE_API_VERSION, CORE_COMMAND_TYPES, type Boost, type BrowserState, type Command, type Entry, type ExtensionRegistration, type ShellVariant, type Tab } from './api';
 import { CORE_CHANNELS } from './protocol';
+import { shellArgument } from './shell';
 
 app.setName('Astra');
 const testProfile = !app.isPackaged ? process.env.ASTRA_TEST_PROFILE : undefined;
@@ -53,8 +54,12 @@ let peekView: WebContentsView | undefined;
 let peekTimer: ReturnType<typeof setTimeout> | undefined;
 let altHeld = false;
 const hoveredLinks = new Map<string, string>();
-const chromeURL = pathToFileURL(join(__dirname, '../renderer/index.html')).href;
-const shellVariant: ShellVariant = 'default';
+const shellVariant: ShellVariant = shellArgument(process.argv);
+let shellInsets = shellVariant === 'minimal'
+  ? { top: 52, right: 0, bottom: 0, left: 0 }
+  : { top: 88, right: 0, bottom: 24, left: 232 };
+const shellDocument = shellVariant === 'minimal' ? 'minimal.html' : 'index.html';
+const chromeURL = pathToFileURL(join(__dirname, '../renderer', shellDocument)).href;
 const active = () => state.tabs.find(tab => tab.id === state.activeId);
 const contents = () => views.get(state.activeId)?.webContents;
 const splitContains = (id: string) => state.split?.leftId === id || state.split?.rightId === id;
@@ -175,7 +180,7 @@ function persist(): void {
 function layout(): void {
   if (!win || win.isDestroyed()) return;
   const [width, height] = win.getContentSize();
-  const bounds = pageBounds(width, height, state.sidebarCollapsed, state.ai?.open);
+  const bounds = contentBounds(width, height, shellInsets);
   const [left, right] = splitBounds(bounds);
   for (const [id, view] of views) {
     const tab = state.tabs.find(tab => tab.id === id);
@@ -515,6 +520,7 @@ async function dispatch(command: Command): Promise<void> {
     case 'clear-history': state.history = []; persist(); break;
     case 'theme': state.theme = command.value; nativeTheme.themeSource = command.value; persist(); break;
     case 'accent': state.accent = command.value; persist(); break;
+    case 'configure-shell': shellInsets = command.insets; layout(); break;
     case 'load-extension': await chooseExtension(); break;
     case 'toggle-extension': {
       const extension = state.extensions?.find(item => item.id === command.id);

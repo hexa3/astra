@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MPL-2.0
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { AI_WIDTH, pageBounds, peekBounds, sidebarWidth, splitBounds } from '../src/shared/layout';
+import { AI_WIDTH, contentBounds, pageBounds, peekBounds, sidebarWidth, splitBounds } from '../src/shared/layout';
 
 test('native bounds share sidebar widths and never cover trusted navigation', () => {
+  assert.deepEqual(contentBounds(1280, 840, { top: 52, right: 0, bottom: 0, left: 0 }), { x: 0, y: 52, width: 1280, height: 788 });
   assert.deepEqual(pageBounds(1280, 840), { x: 232, y: 88, width: 1048, height: 728 });
   assert.deepEqual(pageBounds(1280, 840, true), { x: 56, y: 88, width: 1224, height: 728 });
   assert.equal(sidebarWidth(true), 56);

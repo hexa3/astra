@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: MPL-2.0 -->
 <script lang="ts">
   import { tick } from 'svelte';
-  import type { Command, Tab } from '../core/api';
+  import type { Command, Tab } from '../../core/api';
   import Icon from './Icon.svelte';
   export let tabs: Tab[];
   export let activeId: string;

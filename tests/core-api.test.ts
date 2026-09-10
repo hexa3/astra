@@ -24,7 +24,7 @@ test('core protocol is explicitly major-versioned and discoverable', () => {
 });
 
 test('shell source cannot import core implementation or main-process modules', () => {
-  for (const path of sourceFiles('src/renderer')) {
+  for (const path of sourceFiles('src/shells')) {
     const source = readFileSync(path, 'utf8');
     const forbidden = [...source.matchAll(/from\s+['"]([^'"]+)['"]/g)]
       .map((match) => match[1])

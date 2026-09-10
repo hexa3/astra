@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: MPL-2.0 -->
 <script lang="ts">
-  import type { BrowserState, Command, Tab } from '../core/api';
+  import type { BrowserState, Command, Tab } from '../../core/api';
   import Icon from './Icon.svelte';
   export let state: BrowserState;
   export let tab: Tab | undefined;

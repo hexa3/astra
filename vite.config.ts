@@ -1,9 +1,14 @@
 // SPDX-License-Identifier: MPL-2.0
 import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
+import { resolve } from 'node:path';
 import manifest from './package.json' with { type: 'json' };
 export default defineConfig({
   plugins: [svelte()], base: './',
   define: { __ASTRA_VERSION__: JSON.stringify(manifest.version) },
-  build: { outDir: 'dist/renderer', emptyOutDir: true },
+  build: {
+    outDir: 'dist/renderer',
+    emptyOutDir: true,
+    rollupOptions: { input: { default: resolve('index.html'), minimal: resolve('minimal.html') } },
+  },
 });

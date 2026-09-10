@@ -4,6 +4,7 @@
 export const CORE_API_VERSION = '2.0' as const;
 
 export type ShellVariant = 'default' | 'minimal';
+export interface ShellInsets { top: number; right: number; bottom: number; left: number }
 
 export interface CoreCapabilities {
   apiVersion: typeof CORE_API_VERSION;
@@ -56,6 +57,7 @@ export type Command =
   | { type: 'switch-workspace'; id: string }
   | { type: 'theme'; value: BrowserState['theme'] }
   | { type: 'accent'; value: string }
+  | { type: 'configure-shell'; insets: ShellInsets }
   | { type: 'load-extension' }
   | { type: 'toggle-extension' | 'remove-extension'; id: string }
   | { type: 'save-boost'; domain: string; css: string; js: string; enabled: boolean }
@@ -70,7 +72,7 @@ export const CORE_COMMAND_TYPES = [
   'back', 'forward', 'reload', 'stop', 'bookmark', 'clear-history',
   'toggle-sidebar', 'toggle-split', 'remove-bookmark', 'unlock-vault',
   'background-limit', 'create-workspace', 'rename-workspace', 'switch-workspace',
-  'theme', 'accent', 'load-extension', 'toggle-extension', 'remove-extension',
+  'theme', 'accent', 'configure-shell', 'load-extension', 'toggle-extension', 'remove-extension',
   'save-boost', 'remove-boost', 'toggle-ai', 'ai-summarize', 'close-peek',
   'open-peek', 'ai-ask', 'panel',
 ] as const satisfies readonly Command['type'][];

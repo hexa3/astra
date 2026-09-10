@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: MPL-2.0 -->
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { CORE_API_VERSION, type BrowserState, type Command } from '../core/api';
+  import { CORE_API_VERSION, type BrowserState, type Command } from '../../core/api';
   import Icon from './Icon.svelte';
   import PrivacyPanel from './PrivacyPanel.svelte';
   import WorkspacePanel from './WorkspacePanel.svelte';
@@ -10,7 +10,7 @@
   import ExtensionsPanel from './ExtensionsPanel.svelte';
   import BoostPanel from './BoostPanel.svelte';
   import AISidebar from './AISidebar.svelte';
-  import { AI_WIDTH, sidebarWidth } from '../shared/layout';
+  import { AI_WIDTH, sidebarWidth } from '../../shared/layout';
   let state: BrowserState | undefined;
   let address = '';
   let search = '';
@@ -46,14 +46,17 @@
     document.documentElement.style.setProperty('--accent', next.accent ?? '#e5231b');
   }
   function focusAddress() { addressInput?.focus(); addressInput?.select(); }
+  function configureShell(next: BrowserState) {
+    void run({ type: 'configure-shell', insets: { top: 88, right: next.ai?.open ? AI_WIDTH : 0, bottom: 24, left: sidebarWidth(next.sidebarCollapsed) } });
+  }
   onMount(() => {
     if (window.astra.version !== CORE_API_VERSION) {
       error = `Core API mismatch: shell ${CORE_API_VERSION}, core ${window.astra.version}`;
       return;
     }
-    const offState = window.astra.onState(receive);
+    const offState = window.astra.onState(next => { receive(next); configureShell(next); });
     const offShortcut = window.astra.onShortcut(name => { if (name === 'address') focusAddress(); });
-    window.astra.snapshot().then(receive).catch(cause => error = String(cause));
+    window.astra.snapshot().then(next => { receive(next); configureShell(next); }).catch(cause => error = String(cause));
     return () => { offState(); offShortcut(); };
   });
 </script>
