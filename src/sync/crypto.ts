@@ -61,6 +61,7 @@ export function decryptSyncPayload(key: Buffer, envelope: SyncEnvelope): SyncPay
   if (!envelope || envelope.version !== SYNC_PROTOCOL_VERSION || typeof envelope.ciphertext !== 'string') throw new Error('Unsupported sync envelope.');
   const context = envelopeContext(envelope.device, envelope.sequence);
   const ciphertext = Buffer.from(envelope.ciphertext, 'base64url');
+  if (ciphertext.toString('base64url') !== envelope.ciphertext) throw new Error('Sync ciphertext is not canonical base64url.');
   if (ciphertext.length > 8 * 1024 * 1024 + 28) throw new Error('Sync ciphertext exceeds 8 MiB.');
   const value = JSON.parse(unseal(key, ciphertext, context)) as Partial<SyncPayload>;
   if (!Array.isArray(value.bookmarks) || !Array.isArray(value.history) || !Array.isArray(value.workspaces) || !Number.isSafeInteger(value.updatedAt) || Number(value.updatedAt) < 0) throw new Error('Invalid decrypted sync payload.');

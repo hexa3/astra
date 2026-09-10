@@ -20,7 +20,7 @@ test('server-visible sync envelope cannot expose or silently modify records', as
   const envelope = encryptSyncPayload(keys.encryptionKey, 'laptop', 1, payload);
   assert.doesNotMatch(JSON.stringify(envelope), /private\.example|Private/);
   assert.deepEqual(decryptSyncPayload(keys.encryptionKey, envelope), payload);
-  const tampered = { ...envelope, ciphertext: `${envelope.ciphertext.slice(0, -1)}A` };
+  const tampered = { ...envelope, ciphertext: `${envelope.ciphertext[0] === 'A' ? 'B' : 'A'}${envelope.ciphertext.slice(1)}` };
   assert.throws(() => decryptSyncPayload(keys.encryptionKey, tampered));
   assert.throws(() => decryptSyncPayload(Buffer.alloc(32, 7), envelope));
 });
