@@ -108,3 +108,7 @@ Moved every privileged implementation module under `src/core/`; `src/main/` now 
 ## 2026-09-10 15:22 GST — core/shell local gate green
 
 The corrected core/shell slice passes zero-diagnostic typechecking, 36 unit/architecture tests, both Vite shell builds, all 15 Electron browser/privacy tests, native unload/hibernation, and native MV3 worker/content-script execution. The new minimal test is part of the ordinary product gate rather than a special demo. Next: push for clean Linux, reproducibility, Windows, and both macOS architecture evidence before merging and tagging the block.
+
+## 2026-09-10 15:27 GST — v1.12.0 core/shell matrix green
+
+The committed split passed clean Linux browser run `34470906922`, independent reproducibility run `34470906852`, and native Windows x64/macOS arm64/macOS x64 run `34470906803`. Each native job ran the source tests, built its platform installers, and launched the packaged browser; both shell entries were compiled into those packages. This makes the boundary and second shell verified behavior rather than a directory-only refactor. Next: merge and tag, then move settings, extension declarations, and workspace definitions into credential-free plain-text configuration with a scriptable CLI.

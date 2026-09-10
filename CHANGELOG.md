@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.12.0 — 2026-09-10
+
+- Separated privileged browser implementation into `src/core/`, Electron bootstrap/preload into `src/main/`, and unprivileged front ends into `src/shells/`.
+- Added a discoverable Core API 2.0 with versioned channels, runtime-validated commands, state subscriptions, and shell-owned native-page geometry.
+- Added architecture tests that forbid shells from importing Electron or core internals and forbid core imports from shells.
+- Shipped a meaningfully different minimal horizontal shell with no sidebar or command palette, proven against real Chromium navigation and tabs.
+- Documented compatibility, authorization, security, and third-shell build rules in `CORE_API.md`.
+
 ## 1.8.0 — 2026-09-10
 
 - Added a complete runnable Linux x64 archive whose Electron runtime, app tree, metadata, and compression are canonicalized.
