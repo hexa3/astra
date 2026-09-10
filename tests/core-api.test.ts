@@ -28,9 +28,16 @@ test('shell source cannot import core implementation or main-process modules', (
     const source = readFileSync(path, 'utf8');
     const forbidden = [...source.matchAll(/from\s+['"]([^'"]+)['"]/g)]
       .map((match) => match[1])
-      .filter((specifier) => specifier.includes('/main/') || (specifier.includes('/core/') && !specifier.endsWith('/core/api')));
+      .filter((specifier) => specifier === 'electron' || specifier.includes('/main/') || (specifier.includes('/core/') && !specifier.endsWith('/core/api')));
     assert.deepEqual(forbidden, [], `${relative('.', path)} crosses the public core boundary`);
   }
+});
+
+test('core implementation never imports a shell', () => {
+  const offenders = sourceFiles('src/core')
+    .filter((path) => /from\s+['"][^'"]*\/shells\//.test(readFileSync(path, 'utf8')));
+  assert.deepEqual(offenders, []);
+  assert.deepEqual(readdirSync('src/main').sort(), ['main.ts', 'preload.ts']);
 });
 
 test('versioned channel names live only in the core protocol module', () => {
