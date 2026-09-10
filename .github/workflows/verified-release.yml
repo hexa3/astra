@@ -61,7 +61,9 @@ jobs:
           for archive in verify/a/*.tar.gz; do
             npm run verify:reproducible -- "$archive" "verify/b/$(basename "$archive")"
           done
-          cmp verify/a/*.sha256 verify/b/*.sha256
+          for manifest in verify/a/*.sha256; do
+            cmp "$manifest" "verify/b/$(basename "$manifest")"
+          done
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: verified-${{ inputs.release_tag }}

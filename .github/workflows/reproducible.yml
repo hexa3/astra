@@ -62,7 +62,9 @@ jobs:
           for archive in verify/a/*.tar.gz; do
             npm run verify:reproducible -- "$archive" "verify/b/$(basename "$archive")"
           done
-          cmp verify/a/*.sha256 verify/b/*.sha256
+          for manifest in verify/a/*.sha256; do
+            cmp "$manifest" "verify/b/$(basename "$manifest")"
+          done
 
   published-release:
     name: Compare the published release asset
