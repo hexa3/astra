@@ -13,6 +13,7 @@ The directory contains exactly these files:
 | `settings.toml` | Theme, accent, background-tab limit, collapsed-sidebar preference |
 | `workspaces.toml` | Workspace names/IDs, explicit startup pages, named sessions, active selection |
 | `extensions.toml` | Local MV3 extension IDs, portable directories, enabled state |
+| `sync.toml` | Optional self-hosted endpoint, random Realm, device ID, passphrase verifier |
 
 Every file begins with `format_version = 1`. Astra validates the complete file
 before using it. An invalid edit produces a visible storage warning, uses safe
@@ -112,10 +113,13 @@ are disabled and shown as errors.
 
 ## What is not in dotfiles
 
-The config directory contains no passphrases, vault keys, cookies, credentials,
+The config directory contains no passphrases, auth/content keys, vault keys, cookies, credentials,
 history, bookmarks, current crash-recovery tabs, Boost source, or website data.
 Extension permission names and host patterns are present intentionally so an
 enable decision can be reviewed in version control; they are not credentials.
+When sync is configured, its verifier is also present to catch passphrase typos.
+It cannot authenticate or decrypt, but it enables offline passphrase guessing;
+keep `sync.toml` private if the passphrase is not high entropy. See [SYNC.md](SYNC.md).
 Private browser records stay in Astra's authenticated encrypted vault; normal
 website storage stays in ephemeral Chromium sessions. An existing 1.0 profile
 migrates non-secret preferences, workspace structure, and extension declarations

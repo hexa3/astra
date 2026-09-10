@@ -15,6 +15,7 @@ Astra is licensed under the file-level copyleft [Mozilla Public License 2.0](LIC
 - Two-page split view and Alt-hover native link Peek.
 - Encrypted SQLite history, bookmarks, live tab sessions and Boosts through the OS key store or a user-created passphrase vault.
 - Versioned TOML settings, workspace/session definitions and extension declarations, plus the non-interactive `astractl` CLI for dotfiles and scripts.
+- Manual end-to-end encrypted bookmark/history/workspace sync to the bundled self-hostable server, derived from a passphrase and random Realm with no Astra account or default cloud.
 - Default basic tracker blocking, cross-site HTTP/document cookie blocking, denied sensitive permissions, Global Privacy Control and no telemetry.
 - A resource/privacy panel with observed request counts, blocked trackers/cookies, real renderer working-set samples and sleeping-tab state.
 - Reviewed unpacked Manifest V3 extensions in disposable runtime sessions, including content scripts and service workers supported by Electron.
@@ -53,6 +54,8 @@ npm exec -- astractl extension install /absolute/path/to/extension
 ```
 
 The schema, location, complete command list, safety boundary and version-control workflow are in [CONFIGURATION.md](CONFIGURATION.md). History, bookmarks, current tabs, Boosts, credentials and encryption keys do not enter this directory.
+
+Run the identity-free reference sync server locally with `docker compose -f sync-server/compose.yaml up -d --build`, then configure `http://localhost:8787` under encrypted storage settings. Remote deployments require your own TLS endpoint. Pairing, backups, cryptographic separation, server-visible metadata, and protocol limitations are documented in [SYNC.md](SYNC.md).
 
 ## Verify and package
 
