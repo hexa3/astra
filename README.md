@@ -6,6 +6,8 @@ Astra is a desktop browser built with Electron, Chromium, TypeScript and Svelte.
 
 Astra is licensed under the file-level copyleft [Mozilla Public License 2.0](LICENSE), has no telemetry or advertising code, makes no background update request, and has no account requirement or paid tier. Distributed modifications to Astra's covered source files must remain available under MPL 2.0; see the license itself for the exact terms. The Doto chrome font is bundled separately under the [SIL Open Font License](LICENSES/Doto-OFL.txt); pages retain their own typography.
 
+Astra's permanent [standards policy](STANDARDS.md) forbids proprietary browser APIs on ordinary web pages. A machine-checked [surface audit](docs/standards-audit.json) covers Boosts, resource reporting, local AI, Peek, the shell API, and sync; remote pages receive neither Astra's privileged bridge nor a preload script.
+
 ## What works in 1.0
 
 - Sandboxed Chromium pages with address/search, back, forward, reload, tabs and popup-to-tab handling.
@@ -68,6 +70,8 @@ npm run package:reproducible:container
 ```
 
 `verify` typechecks Svelte/TypeScript, runs unit tests, builds production assets, drives real Electron browser/privacy flows, and runs native unload and MV3 worker/content-script tests. Tests use sandboxed pages and disposable profiles; no test disables Chromium's sandbox. See [verification details](docs/testing.md) and [keyboard controls](docs/keyboard.md).
+
+The unit gate also enforces the web-platform boundary and completeness of the custom-surface audit. See [STANDARDS.md](STANDARDS.md) and the public [proposal staging area](docs/standards-proposals/README.md).
 
 The Linux x64 reproducible tarball is a complete runnable browser built inside a digest-pinned environment and canonicalized byte for byte. CI requires two independent builds to match before the verified-release workflow can publish it. Native installer formats are not mislabeled as reproducible. Follow [REPRODUCIBLE_BUILDS.md](REPRODUCIBLE_BUILDS.md) to rebuild and compare a release yourself.
 

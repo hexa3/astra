@@ -49,7 +49,7 @@ Authorization requires all of the following for every invocation:
 3. the committed frame URL is the exact selected packaged shell document;
 4. the command passes runtime schema validation.
 
-Both shipped HTML documents also use a deny-by-default Content Security Policy with no network connection permission. Website views run sandboxed in separate sessions and never inherit shell preload code.
+Both shipped HTML documents also use a deny-by-default Content Security Policy with no network connection permission. Website views run sandboxed in separate sessions and never inherit shell preload code. Every normal tab and Peek view is constructed through the single policy in `src/core/web-boundary.ts`; `tests/standards.test.ts` rejects a new page-view path that bypasses it. The permanent website-facing policy and audited custom-surface inventory are documented in `STANDARDS.md`.
 
 ## Build a third shell without changing core implementation
 

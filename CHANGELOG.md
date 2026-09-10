@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.20.0 — 2026-09-10
+
+- Added identity-free, manually triggered end-to-end encrypted sync for bookmarks, history, and workspaces, using passphrase-derived but cryptographically separated authentication and content keys.
+- Shipped a standalone dependency-free reference server, pinned non-root Docker image, and hardened Compose deployment that require no email, Astra account, or contact with an Astra service and store only bounded opaque envelopes.
+- Added real two-device client/server and Electron tests for exchange, wrong-key isolation, replay/tamper rejection, transport policy, and absence of plaintext records in server storage.
+- Centralized every untrusted tab and Peek view behind one no-preload sandbox policy, while retaining the versioned bridge only for authorized packaged browser chrome.
+- Published the permanent standards policy, machine-readable custom-surface audit, and public proposal staging rules; CI now rejects unaudited surfaces and page-view paths that bypass the standards boundary.
+
 ## 1.16.0 — 2026-09-10
 
 - Moved non-secret settings, workspace/session definitions, extension paths, enabled states, and reviewed manifest access into validated, atomic TOML under the platform config directory.
