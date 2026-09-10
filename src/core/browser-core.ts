@@ -678,9 +678,11 @@ app.whenReady().then(async () => {
   state.tabs.push(...saved);
   const selectedSession = plainConfig.workspaces.sessions.find(item => item.name === plainConfig.workspaces.activeSession);
   const startupPages = selectedSession?.pages ?? plainConfig.workspaces.workspaces.find(item => item.id === state.activeWorkspaceId)?.startupPages ?? [];
-  for (const url of startupPages) newTab(url);
   persist();
   await win.loadURL(chromeURL);
+  // Load trusted chrome before any configured website so automation, assistive
+  // technology and window observers consistently discover the browser shell first.
+  for (const url of startupPages) newTab(url);
   win.show();
   for (const url of [...process.argv.filter(isWebURL), ...pendingURLs]) newTab(url);
   pendingURLs.length = 0;
