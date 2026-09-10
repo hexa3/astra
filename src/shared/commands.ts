@@ -7,7 +7,7 @@ export function validateCommand(raw: unknown): Command {
   if (!raw || typeof raw !== 'object') throw new Error('Invalid command.');
   const command = raw as Record<string, unknown>;
   if (typeof command.type !== 'string') throw new Error('Invalid command.');
-  const simple = ['back', 'forward', 'reload', 'stop', 'bookmark', 'clear-history', 'toggle-sidebar', 'toggle-split', 'load-extension', 'toggle-ai', 'ai-summarize', 'close-peek', 'open-peek'];
+  const simple = ['back', 'forward', 'reload', 'stop', 'bookmark', 'clear-history', 'toggle-sidebar', 'toggle-split', 'load-extension', 'toggle-ai', 'ai-summarize', 'close-peek', 'open-peek', 'disable-sync'];
   if (simple.includes(command.type)) return raw as Command;
   if (command.type === 'navigate' && typeof command.url === 'string' && command.url.length <= 8192) return raw as Command;
   if (command.type === 'new-tab' && (command.url === undefined || typeof command.url === 'string' && command.url.length <= 8192)) return raw as Command;
@@ -28,6 +28,8 @@ export function validateCommand(raw: unknown): Command {
   if (command.type === 'save-boost' && typeof command.domain === 'string' && command.domain.length <= 253 && typeof command.css === 'string' && command.css.length <= 100000 && typeof command.js === 'string' && command.js.length <= 100000 && typeof command.enabled === 'boolean') return raw as Command;
   if (command.type === 'remove-boost' && typeof command.domain === 'string' && command.domain.length <= 253) return raw as Command;
   if (command.type === 'ai-ask' && typeof command.question === 'string' && command.question.trim().length > 0 && command.question.length <= 1000) return { type: 'ai-ask', question: command.question.trim() };
+  if (command.type === 'sync-now' && typeof command.passphrase === 'string' && command.passphrase.length >= 16 && command.passphrase.length <= 1024) return raw as Command;
+  if (command.type === 'configure-sync' && typeof command.endpoint === 'string' && command.endpoint.length <= 2048 && (command.realm === undefined || typeof command.realm === 'string' && command.realm.length <= 100) && typeof command.device === 'string' && /^[a-zA-Z0-9_-]{1,100}$/.test(command.device) && typeof command.passphrase === 'string' && command.passphrase.length >= 16 && command.passphrase.length <= 1024) return raw as Command;
   if (command.type === 'panel' && typeof command.value === 'string' && ['none', 'bookmarks', 'history', 'privacy', 'storage', 'workspaces', 'commands', 'extensions', 'boosts'].includes(command.value)) return raw as Command;
   throw new Error('Unsupported browser command.');
 }

@@ -23,6 +23,8 @@ import { CORE_API_VERSION, CORE_COMMAND_TYPES, type Boost, type BrowserState, ty
 import { CORE_CHANNELS } from './protocol';
 import { shellArgument } from './shell';
 import { ConfigStore, portableConfigPath, resolveConfigPath, type PlainConfig } from '../config/index';
+import { SyncClient, syncEndpoint } from '../sync/client';
+import { createSyncRealm, deriveSyncKeys } from '../sync/crypto';
 
 app.setName('Astra');
 const testProfile = !app.isPackaged ? process.env.ASTRA_TEST_PROFILE : undefined;
@@ -173,7 +175,7 @@ function persist(): void {
   vault.set('boosts', state.boosts);
   state.storage = vault.mode; state.storageMessage = vault.message; state.vaultLocked = vault.locked;
 }
-function persistPlainConfig(part: 'settings' | 'workspaces' | 'extensions' | 'all'): void {
+function persistPlainConfig(part: 'settings' | 'workspaces' | 'extensions' | 'sync' | 'all'): void {
   if (plainConfig.warnings.length) return;
   if (part === 'settings' || part === 'all') {
     plainConfig.settings = { theme: state.theme, accent: state.accent ?? '#e5231b', backgroundLimit: state.backgroundLimit, sidebarCollapsed: !!state.sidebarCollapsed };
@@ -191,6 +193,7 @@ function persistPlainConfig(part: 'settings' | 'workspaces' | 'extensions' | 'al
     plainConfig.extensions.extensions = (state.extensions ?? []).map(extension => ({ id: extension.id, directory: portableConfigPath(resolve(extension.directory)), enabled: extension.enabled, name: extension.name, version: extension.version, permissions: extension.permissions, hosts: extension.hosts }));
     configStore.writeExtensions(plainConfig.extensions);
   }
+  if (part === 'sync' || part === 'all') configStore.writeSync(plainConfig.sync);
 }
 function forgetLegacyPlainConfig(): void {
   for (const key of ['theme', 'accent', 'background-limit', 'sidebar-collapsed', 'workspaces', 'active-workspace', 'extensions']) vault.delete(key);
@@ -458,6 +461,34 @@ async function runAI(question?: string): Promise<void> {
   } catch (cause) { ai.error = cause instanceof Error ? cause.message : String(cause); }
   finally { ai.busy = false; publish(); }
 }
+async function configureSync(endpoint: string, realm: string | undefined, device: string, passphrase: string): Promise<void> {
+  const normalizedEndpoint = syncEndpoint(endpoint);
+  const selectedRealm = realm?.trim() || createSyncRealm();
+  const keys = await deriveSyncKeys(passphrase, selectedRealm);
+  try {
+    plainConfig.sync = { enabled: true, endpoint: normalizedEndpoint, realm: selectedRealm, device, verifier: keys.verifier };
+    persistPlainConfig('sync');
+    state.sync = { configured: true, busy: false, endpoint: normalizedEndpoint, realm: selectedRealm, device, message: 'Configured. Sync runs only when you choose Sync now.' };
+  } finally { keys.encryptionKey.fill(0); }
+}
+async function synchronize(passphrase: string): Promise<void> {
+  const config = plainConfig.sync;
+  if (!config.enabled || !config.endpoint || !config.realm || !config.device || !config.verifier) throw new Error('Configure a self-hosted sync endpoint first.');
+  state.sync = { configured: true, busy: true, endpoint: config.endpoint, realm: config.realm, device: config.device, message: 'Encrypting and exchanging records…' }; publish();
+  let client: SyncClient | undefined;
+  try {
+    client = await SyncClient.connect({ endpoint: config.endpoint, realm: config.realm, device: config.device, verifier: config.verifier }, passphrase);
+    const merged = await client.exchange({ bookmarks: state.bookmarks, history: state.history, workspaces: state.workspaces });
+    state.bookmarks = merged.bookmarks; state.history = merged.history;
+    state.workspaces = restoreWorkspaces(merged.workspaces);
+    if (!state.workspaces.some(workspace => workspace.id === state.activeWorkspaceId)) state.activeWorkspaceId = state.workspaces[0].id;
+    persist(); persistPlainConfig('workspaces');
+    state.sync = { configured: true, busy: false, endpoint: config.endpoint, realm: config.realm, device: config.device, lastSync: Date.now(), message: 'Encrypted sync complete.' };
+  } catch (cause) {
+    state.sync = { configured: true, busy: false, endpoint: config.endpoint, realm: config.realm, device: config.device, message: cause instanceof Error ? cause.message : String(cause) };
+    throw cause;
+  } finally { client?.close(); publish(); }
+}
 function toggleBookmark(): void {
   const tab = active(); if (!tab?.url) return;
   const index = state.bookmarks.findIndex(entry => entry.url === tab.url);
@@ -605,6 +636,9 @@ async function dispatch(command: Command): Promise<void> {
     case 'toggle-ai': state.ai!.open = !state.ai!.open; layout(); break;
     case 'ai-summarize': await runAI(); break;
     case 'ai-ask': await runAI(command.question); break;
+    case 'configure-sync': await configureSync(command.endpoint, command.realm, command.device, command.passphrase); break;
+    case 'sync-now': await synchronize(command.passphrase); break;
+    case 'disable-sync': plainConfig.sync = { enabled: false }; persistPlainConfig('sync'); state.sync = { configured: false, busy: false, message: 'Sync is disabled on this device.' }; break;
     case 'close-peek': closePeek(); break;
     case 'open-peek': { const url = state.peek?.url; closePeek(); if (url) newTab(url); break; }
     case 'panel': state.panel = command.value; layout(); if (command.value === 'none') contents()?.focus(); break;
@@ -625,7 +659,7 @@ app.whenReady().then(async () => {
   });
   forgetLegacyPlainConfig();
   const configuredWorkspaces = plainConfig.workspaces.workspaces.map(({ id, name }) => ({ id, name }));
-  state = { tabs: [], activeId: '', bookmarks: vault.get<Entry[]>('bookmarks', []), history: vault.get<Entry[]>('history', []), storage: vault.mode, storageMessage: plainConfig.warnings.length ? `${vault.message} Config warning: ${plainConfig.warnings.join(' ')}` : vault.message, vaultLocked: vault.locked, theme: plainConfig.settings.theme, accent: plainConfig.settings.accent, panel: 'none', backgroundLimit: plainConfig.settings.backgroundLimit, sidebarCollapsed: plainConfig.settings.sidebarCollapsed, workspaces: configuredWorkspaces, activeWorkspaceId: plainConfig.workspaces.activeWorkspaceId, extensions: configuredExtensions(plainConfig), extensionsAvailable: RamSessions.supported(), boosts: vault.get<Boost[]>('boosts', []), ai: { open: false, busy: false, provider: localModel.id, disclosure: localModel.disclosure } };
+  state = { tabs: [], activeId: '', bookmarks: vault.get<Entry[]>('bookmarks', []), history: vault.get<Entry[]>('history', []), storage: vault.mode, storageMessage: plainConfig.warnings.length ? `${vault.message} Config warning: ${plainConfig.warnings.join(' ')}` : vault.message, vaultLocked: vault.locked, theme: plainConfig.settings.theme, accent: plainConfig.settings.accent, panel: 'none', backgroundLimit: plainConfig.settings.backgroundLimit, sidebarCollapsed: plainConfig.settings.sidebarCollapsed, workspaces: configuredWorkspaces, activeWorkspaceId: plainConfig.workspaces.activeWorkspaceId, extensions: configuredExtensions(plainConfig), extensionsAvailable: RamSessions.supported(), boosts: vault.get<Boost[]>('boosts', []), ai: { open: false, busy: false, provider: localModel.id, disclosure: localModel.disclosure }, sync: plainConfig.sync.enabled ? { configured: true, busy: false, endpoint: plainConfig.sync.endpoint, realm: plainConfig.sync.realm, device: plainConfig.sync.device } : { configured: false, busy: false } };
   nativeTheme.themeSource = state.theme;
   win = new BrowserWindow({ width: 1280, height: 840, minWidth: 760, minHeight: 520, title: 'Astra', backgroundColor: '#000000', show: false, autoHideMenuBar: true,
     webPreferences: { preload: join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true, spellcheck: false, webviewTag: false, partition: 'astra-chrome' },

@@ -29,6 +29,7 @@ export interface ExtensionRegistration {
 }
 export interface Boost { domain: string; css: string; js: string; enabled: boolean; error?: string }
 export interface AIState { open: boolean; busy: boolean; provider: string; disclosure: string; sourceUrl?: string; summary?: string; answer?: string; error?: string }
+export interface SyncState { configured: boolean; busy: boolean; endpoint?: string; realm?: string; device?: string; lastSync?: number; message?: string }
 export interface BrowserState {
   tabs: Tab[]; activeId: string; bookmarks: Entry[]; history: Entry[];
   storage: 'encrypted' | 'memory'; storageMessage: string; vaultLocked: boolean;
@@ -39,6 +40,7 @@ export interface BrowserState {
   extensions?: ExtensionRegistration[]; extensionsAvailable?: boolean;
   boosts?: Boost[];
   ai?: AIState;
+  sync?: SyncState;
   peek?: { url: string; title: string; loading: boolean };
   theme: 'system' | 'dark' | 'light'; panel: 'none' | 'bookmarks' | 'history' | 'privacy' | 'storage' | 'workspaces' | 'commands' | 'extensions' | 'boosts';
   accent?: string;
@@ -65,6 +67,9 @@ export type Command =
   | { type: 'toggle-ai' | 'ai-summarize' }
   | { type: 'close-peek' | 'open-peek' }
   | { type: 'ai-ask'; question: string }
+  | { type: 'configure-sync'; endpoint: string; realm?: string; device: string; passphrase: string }
+  | { type: 'sync-now'; passphrase: string }
+  | { type: 'disable-sync' }
   | { type: 'panel'; value: BrowserState['panel'] };
 
 export const CORE_COMMAND_TYPES = [
@@ -75,6 +80,7 @@ export const CORE_COMMAND_TYPES = [
   'theme', 'accent', 'configure-shell', 'load-extension', 'toggle-extension', 'remove-extension',
   'save-boost', 'remove-boost', 'toggle-ai', 'ai-summarize', 'close-peek',
   'open-peek', 'ai-ask', 'panel',
+  'configure-sync', 'sync-now', 'disable-sync',
 ] as const satisfies readonly Command['type'][];
 
 export interface CoreAPI {

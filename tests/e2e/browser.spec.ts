@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MPL-2.0
 import { test, expect, _electron as electron } from '@playwright/test';
 import { createServer, type Server } from 'node:http';
-import { mkdtempSync, readFileSync, readdirSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
 import { ConfigStore } from '../../src/config/index';
+import { createSyncServer } from '../../sync-server/server.mjs';
+import { SyncClient } from '../../src/sync/client';
 
 let server: Server;
 let origin: string;
@@ -93,6 +95,48 @@ test('uses plain-text settings and workspace startup definitions as runtime conf
     await expect.poll(() => readFileSync(join(profile, 'config', 'settings.toml'), 'utf8')).toContain('theme = "dark"');
     for (const file of readdirSync(join(profile, 'config'))) expect(readFileSync(join(profile, 'config', file), 'utf8')).not.toMatch(/passphrase|sync_key|credential =/i);
   } finally { await app.close(); }
+});
+
+test('syncs encrypted records to a self-hosted server without an account', async () => {
+  const profile = mkdtempSync(join(tmpdir(), 'astra-sync-browser-'));
+  const serverData = mkdtempSync(join(tmpdir(), 'astra-sync-data-'));
+  const syncServer = createSyncServer({ dataDirectory: serverData });
+  await new Promise<void>(resolve => syncServer.listen(0, '127.0.0.1', resolve));
+  const endpoint = `http://127.0.0.1:${(syncServer.address() as { port: number }).port}`;
+  const passphrase = 'browser shared high entropy sync phrase';
+  const app = await electron.launch({ args: ['.'], env: { ...process.env, ASTRA_TEST_PROFILE: profile } });
+  try {
+    const chrome = await app.firstWindow();
+    const address = chrome.getByRole('textbox', { name: 'Address or search' });
+    await address.fill(origin); await address.press('Enter');
+    await expect(chrome.getByRole('tab', { name: 'Astra test page' })).toBeVisible();
+    await chrome.getByRole('button', { name: 'Bookmark page', exact: true }).click();
+    await chrome.getByRole('button', { name: 'Encrypted storage settings' }).click();
+    await chrome.getByLabel('Sync server endpoint').fill(endpoint);
+    await chrome.getByLabel('Sync device ID').fill('desktop-test');
+    await chrome.getByLabel('New sync passphrase').fill(passphrase);
+    await chrome.getByRole('button', { name: 'Set up sync' }).click();
+    await expect(chrome.getByText('Configured. Sync runs only when you choose Sync now.')).toBeVisible();
+    await chrome.getByLabel('Sync passphrase').fill(passphrase);
+    await chrome.getByRole('button', { name: 'Sync now' }).click();
+    await expect(chrome.getByText('Encrypted sync complete.')).toBeVisible();
+
+    const configured = (await chrome.evaluate(() => window.astra.snapshot())).sync!;
+    const phone = await SyncClient.connect({ endpoint, realm: configured.realm!, device: 'phone-test', verifier: new ConfigStore(join(profile, 'config')).load().sync.verifier! }, passphrase);
+    try {
+      await phone.exchange({ bookmarks: [], history: [{ id: 'remote-history', url: 'https://example.org/', title: 'From phone', time: Date.now() }], workspaces: [{ id: 'personal', name: 'Personal' }] });
+    } finally { phone.close(); }
+    await chrome.getByLabel('Sync passphrase').fill(passphrase);
+    await chrome.getByRole('button', { name: 'Sync now' }).click();
+    await expect.poll(async () => (await chrome.evaluate(() => window.astra.snapshot())).history.some(entry => entry.id === 'remote-history')).toBe(true);
+
+    const stored = readdirSync(serverData, { recursive: true }).filter(name => String(name).endsWith('.json')).map(name => readFileSync(join(serverData, String(name)), 'utf8')).join('');
+    expect(stored).not.toContain(origin); expect(stored).not.toContain('From phone'); expect(stored).not.toContain(passphrase);
+  } finally {
+    await app.close();
+    await new Promise<void>((resolve, reject) => syncServer.close(error => error ? reject(error) : resolve()));
+    rmSync(serverData, { recursive: true, force: true });
+  }
 });
 
 test('applies a hostname boost and runs the optional assistant locally', async () => {

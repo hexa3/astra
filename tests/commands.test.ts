@@ -41,3 +41,14 @@ test('accent colors accept only an explicit six-digit hex value', () => {
   assert.deepEqual(validateCommand({type: 'accent', value: '#E5231B'}), {type: 'accent', value: '#e5231b'});
   for (const value of ['red', '#fff', '#12345678', '#gg0000', 5]) assert.throws(() => validateCommand({type: 'accent', value}));
 });
+
+test('sync commands keep passphrases bounded at the trusted boundary', () => {
+  const configured = { type: 'configure-sync', endpoint: 'https://sync.example', device: 'laptop', realm: 'a'.repeat(43), passphrase: 'a strong sync phrase' };
+  assert.deepEqual(validateCommand(configured), configured);
+  assert.deepEqual(validateCommand({ type: 'sync-now', passphrase: 'a strong sync phrase' }), { type: 'sync-now', passphrase: 'a strong sync phrase' });
+  for (const malformed of [
+    { ...configured, endpoint: 4 }, { ...configured, endpoint: 'x'.repeat(2049) },
+    { ...configured, device: '../laptop' }, { ...configured, realm: 4 },
+    { ...configured, passphrase: 'short' }, { type: 'sync-now', passphrase: 'short' },
+  ]) assert.throws(() => validateCommand(malformed));
+});

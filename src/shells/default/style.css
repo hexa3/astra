@@ -218,6 +218,14 @@ select:focus-visible {
   margin-top: 24px;
   max-width: 580px;
 }
+.sync-settings { border-top: 1px solid var(--line); margin-top: 30px; padding-top: 30px; max-width: 680px; }
+.sync-settings h2 { font: 600 24px Doto, monospace; margin: 10px 0; }
+.sync-settings dl { border-top: 1px solid var(--line); margin-top: 20px; }
+.sync-settings dl > div { display: grid; grid-template-columns: 100px 1fr; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 11px; }
+.sync-settings dt { color: var(--muted); }
+.sync-settings dd { margin: 0; overflow-wrap: anywhere; font-family: monospace; }
+.sync-actions { display: flex; align-items: center; gap: 18px; }
+.sync-actions button:last-child { margin-top: 18px; text-decoration: underline; font-size: 11px; }
 .status button.status-storage {
   font: inherit;
   min-height: 20px;

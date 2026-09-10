@@ -21,6 +21,11 @@
   let passphrase = '';
   let confirmPassphrase = '';
   let unlocking = false;
+  let syncEndpointValue = 'http://localhost:8787';
+  let syncRealm = '';
+  let syncDevice = 'desktop';
+  let syncPassphrase = '';
+  let syncing = false;
   $: tab = state?.tabs.find(item => item.id === state?.activeId);
   $: workspaceTabs = state?.tabs.filter(item => item.workspaceId === state?.activeWorkspaceId) ?? [];
   $: canSplit = !!tab?.url && !tab.error && workspaceTabs.some(item => item.id !== tab?.id && item.url && !item.error);
@@ -37,6 +42,17 @@
     await run({ type: 'unlock-vault', passphrase });
     passphrase = ''; confirmPassphrase = ''; unlocking = false;
   }
+  async function configureSync(event: SubmitEvent) {
+    event.preventDefault(); syncing = true;
+    const complete = await run({ type: 'configure-sync', endpoint: syncEndpointValue, realm: syncRealm || undefined, device: syncDevice, passphrase: syncPassphrase });
+    if (complete) syncPassphrase = '';
+    syncing = false;
+  }
+  async function syncNow(event: SubmitEvent) {
+    event.preventDefault(); syncing = true;
+    await run({ type: 'sync-now', passphrase: syncPassphrase });
+    syncPassphrase = ''; syncing = false;
+  }
   function receive(next: BrowserState) {
     state = next;
     const current = next.tabs.find(item => item.id === next.activeId);
@@ -44,6 +60,9 @@
     previousId = current?.id ?? '';
     document.documentElement.dataset.theme = next.theme;
     document.documentElement.style.setProperty('--accent', next.accent ?? '#e5231b');
+    if (next.sync?.endpoint) syncEndpointValue = next.sync.endpoint;
+    if (next.sync?.realm) syncRealm = next.sync.realm;
+    if (next.sync?.device) syncDevice = next.sync.device;
   }
   function focusAddress() { addressInput?.focus(); addressInput?.select(); }
   function configureShell(next: BrowserState) {
@@ -133,6 +152,27 @@
           </form>
         {/if}
         <p class="storage-explanation muted">Website cookies and logins are held in memory and cleared when Astra quits. Downloads you explicitly save are ordinary files at your chosen location.</p>
+        <div class="sync-settings">
+          <div class="eyebrow">YOUR SERVER / NO ASTRA ACCOUNT</div>
+          <h2>Identity-free encrypted sync</h2>
+          <p class="muted">Bookmarks, history and workspace names are encrypted before they leave this device. Sync runs only when you press the button. Use HTTPS except for a server on this device.</p>
+          {#if state.sync?.configured}
+            <dl><div><dt>Endpoint</dt><dd>{state.sync.endpoint}</dd></div><div><dt>Realm</dt><dd>{state.sync.realm}</dd></div><div><dt>Device</dt><dd>{state.sync.device}</dd></div></dl>
+            <p class="muted" aria-live="polite">{state.sync.message ?? 'Ready to sync.'}{state.sync.lastSync ? ` ${new Date(state.sync.lastSync).toLocaleString()}` : ''}</p>
+            <form class="vault-form" onsubmit={syncNow}>
+              <label>Sync passphrase<input aria-label="Sync passphrase" type="password" bind:value={syncPassphrase} minlength="16" maxlength="1024" autocomplete="current-password" required /></label>
+              <div class="sync-actions"><button class="primary-action" type="submit" disabled={syncing || state.sync.busy}>{syncing || state.sync.busy ? 'Syncing…' : 'Sync now'}<Icon name="shield" /></button><button type="button" onclick={() => run({ type: 'disable-sync' })}>Disable on this device</button></div>
+            </form>
+          {:else}
+            <form class="vault-form" onsubmit={configureSync}>
+              <label>Server endpoint<input aria-label="Sync server endpoint" type="url" bind:value={syncEndpointValue} maxlength="2048" required /></label>
+              <label>Device ID<input aria-label="Sync device ID" bind:value={syncDevice} pattern={'[a-zA-Z0-9_-]{1,100}'} maxlength="100" required /></label>
+              <label>Realm from another device (optional)<input aria-label="Sync realm" bind:value={syncRealm} pattern={'[a-zA-Z0-9_-]{43}'} maxlength="43" /></label>
+              <label>Sync passphrase<input aria-label="New sync passphrase" type="password" bind:value={syncPassphrase} minlength="16" maxlength="1024" autocomplete="new-password" required /></label>
+              <button class="primary-action" type="submit" disabled={syncing}>{syncing ? 'Deriving keys…' : 'Set up sync'}<Icon name="shield" /></button>
+            </form>
+          {/if}
+        </div>
       </section>
     {:else if state?.panel === 'bookmarks' || state?.panel === 'history'}
       <section class="panel">
