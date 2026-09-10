@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -32,4 +32,15 @@ test('reproducible verifier accepts identical bytes and rejects a mismatch', () 
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
+});
+
+test('official launchers lock distinct shells onto the same packaged core', () => {
+  for (const variant of ['default', 'minimal']) {
+    const launcher = readFileSync(`packaging/launchers/astra-${variant}`, 'utf8');
+    assert.match(launcher, new RegExp(`exec .*astra-core.*--astra-shell=${variant}`));
+    assert.doesNotMatch(launcher, /electron|dist\/main/);
+  }
+  const packager = readFileSync('scripts/build-reproducible.sh', 'utf8');
+  assert.match(packager, /for ASTRA_VARIANT in default minimal/);
+  assert.equal((packager.match(/npx electron-builder/g) ?? []).length, 1);
 });

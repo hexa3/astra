@@ -37,7 +37,6 @@ if ! tar --version 2>/dev/null | head -n 1 | grep -q 'GNU tar'; then
 fi
 
 ASTRA_VERSION=$(node -p "require('./package.json').version")
-ASTRA_NAME="astra-${ASTRA_VERSION}-linux-x64-reproducible.tar.gz"
 ASTRA_OUTPUT_DIR=${ASTRA_REPRO_OUTPUT_DIR:-"$ASTRA_ROOT/release/reproducible"}
 ASTRA_TMP_BASE=${TMPDIR:-/tmp}
 ASTRA_STAGE=$(mktemp -d "$ASTRA_TMP_BASE/astra-repro.XXXXXXXX")
@@ -60,21 +59,28 @@ if [ ! -x "$ASTRA_STAGE/linux-unpacked/astra-browser" ]; then
   exit 1
 fi
 
-tar --sort=name \
-  --format=gnu \
-  --mtime="@$ASTRA_EPOCH" \
-  --owner=0 \
-  --group=0 \
-  --numeric-owner \
-  --transform='s,^linux-unpacked,astra,' \
-  -C "$ASTRA_STAGE" \
-  -cf "$ASTRA_STAGE/astra.tar" linux-unpacked
-gzip -n -9 -c "$ASTRA_STAGE/astra.tar" > "$ASTRA_OUTPUT_DIR/$ASTRA_NAME"
+for ASTRA_VARIANT in default minimal; do
+  ASTRA_NAME="astra-${ASTRA_VERSION}-${ASTRA_VARIANT}-linux-x64-reproducible.tar.gz"
+  ASTRA_VARIANT_STAGE="$ASTRA_STAGE/variant-$ASTRA_VARIANT"
+  mkdir -p "$ASTRA_VARIANT_STAGE"
+  cp -a "$ASTRA_STAGE/linux-unpacked" "$ASTRA_VARIANT_STAGE/astra"
+  mv "$ASTRA_VARIANT_STAGE/astra/astra-browser" "$ASTRA_VARIANT_STAGE/astra/astra-core"
+  cp "$ASTRA_ROOT/packaging/launchers/astra-$ASTRA_VARIANT" "$ASTRA_VARIANT_STAGE/astra/astra-browser"
+  chmod 0755 "$ASTRA_VARIANT_STAGE/astra/astra-browser"
 
-(
-  cd "$ASTRA_OUTPUT_DIR"
-  sha256sum "$ASTRA_NAME" > "$ASTRA_NAME.sha256"
-)
-
-echo "$ASTRA_OUTPUT_DIR/$ASTRA_NAME"
-cat "$ASTRA_OUTPUT_DIR/$ASTRA_NAME.sha256"
+  tar --sort=name \
+    --format=gnu \
+    --mtime="@$ASTRA_EPOCH" \
+    --owner=0 \
+    --group=0 \
+    --numeric-owner \
+    -C "$ASTRA_VARIANT_STAGE" \
+    -cf "$ASTRA_STAGE/astra-$ASTRA_VARIANT.tar" astra
+  gzip -n -9 -c "$ASTRA_STAGE/astra-$ASTRA_VARIANT.tar" > "$ASTRA_OUTPUT_DIR/$ASTRA_NAME"
+  (
+    cd "$ASTRA_OUTPUT_DIR"
+    sha256sum "$ASTRA_NAME" > "$ASTRA_NAME.sha256"
+  )
+  echo "$ASTRA_OUTPUT_DIR/$ASTRA_NAME"
+  cat "$ASTRA_OUTPUT_DIR/$ASTRA_NAME.sha256"
+done

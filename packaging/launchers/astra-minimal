@@ -1,0 +1,5 @@
+#!/bin/sh
+# SPDX-License-Identifier: MPL-2.0
+set -eu
+ASTRA_VARIANT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+exec "$ASTRA_VARIANT_DIR/astra-core" --astra-shell=minimal "$@"

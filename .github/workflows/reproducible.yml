@@ -59,7 +59,9 @@ jobs:
           path: verify/b
       - name: Compare every archive byte
         run: |
-          npm run verify:reproducible -- verify/a/*.tar.gz verify/b/*.tar.gz
+          for archive in verify/a/*.tar.gz; do
+            npm run verify:reproducible -- "$archive" "verify/b/$(basename "$archive")"
+          done
           cmp verify/a/*.sha256 verify/b/*.sha256
 
   published-release:
@@ -79,4 +81,7 @@ jobs:
       - name: Download the public artifact from this release
         run: gh release download "$GITHUB_REF_NAME" --pattern '*-reproducible.tar.gz' --dir verify/published
       - name: Compare source rebuild to public bytes
-        run: npm run verify:reproducible -- verify/built/*.tar.gz verify/published/*.tar.gz
+        run: |
+          for archive in verify/built/*.tar.gz; do
+            npm run verify:reproducible -- "$archive" "verify/published/$(basename "$archive")"
+          done
