@@ -20,6 +20,7 @@ Astra is licensed under the file-level copyleft [Mozilla Public License 2.0](LIC
 - Exact-hostname CSS/JavaScript Boosts stored locally and executed only in sandboxed page worlds.
 - An optional, dismissible AI sidebar for local extractive summaries and page questions. It makes no network request and requires no model download or account.
 - Dark, light and system themes, a user-selected single accent, reduced-motion behavior, forced-color support, labeled controls and keyboard equivalents for primary actions.
+- A versioned, context-isolated Core API with architecture tests and two independent shells: the full default interface and a horizontal minimal reference.
 
 ## Install and run
 
@@ -33,6 +34,14 @@ npm start
 ```
 
 Use `--astra-profile=/absolute/path` for an isolated profile. This changes the profile location, not the encryption policy.
+
+Run the deliberately sparse second shell against the same core:
+
+```sh
+npm start -- --astra-shell=minimal
+```
+
+Its one horizontal bar has no sidebar or command palette; it still performs real navigation and tab operations. The stable contract and third-shell guide are in [CORE_API.md](CORE_API.md).
 
 ## Verify and package
 
