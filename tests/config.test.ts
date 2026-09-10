@@ -48,3 +48,20 @@ test('config and extension paths are predictable without embedding a username', 
   assert.equal(resolveConfigPath('$HOME/extensions/tool', '/home/alice'), '/home/alice/extensions/tool');
   assert.throws(() => configDirectory({ ASTRA_CONFIG_DIR: 'relative' }, '/home/alice'), /absolute/);
 });
+
+test('workspace sessions can select a declared active session', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'astra-config-session-'));
+  try {
+    const store = new ConfigStore(directory);
+    const config = store.load().workspaces;
+    config.sessions.push({ name: 'Research', workspaceId: 'personal', pages: ['https://example.com/docs'] });
+    config.activeSession = 'Research';
+    store.writeWorkspaces(config);
+    assert.equal(store.load().workspaces.activeSession, 'Research');
+
+    writeFileSync(join(directory, 'workspaces.toml'), readFileSync(join(directory, 'workspaces.toml'), 'utf8').replace('active_session = "Research"', 'active_session = "Missing"'));
+    const invalid = store.load();
+    assert.equal(invalid.workspaces.activeSession, undefined);
+    assert.match(invalid.warnings[0], /active_session/);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});

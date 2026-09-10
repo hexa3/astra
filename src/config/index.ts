@@ -26,6 +26,7 @@ export interface SessionDefinition {
 }
 export interface WorkspacesConfig {
   activeWorkspaceId: string;
+  activeSession?: string;
   workspaces: WorkspaceDefinition[];
   sessions: SessionDefinition[];
 }
@@ -148,7 +149,9 @@ function parseWorkspaces(raw: unknown): WorkspacesConfig {
     };
   });
   if (new Set(sessions.map(session => session.name.toLocaleLowerCase())).size !== sessions.length) throw new Error('Session names must be unique.');
-  return { activeWorkspaceId, workspaces, sessions };
+  const activeSession = value.active_session === undefined ? undefined : text(value.active_session, 'active_session', 80);
+  if (activeSession && !sessions.some(session => session.name === activeSession)) throw new Error('active_session must name a declared session.');
+  return { activeWorkspaceId, activeSession, workspaces, sessions };
 }
 
 function parseExtensions(raw: unknown): ExtensionsConfig {
@@ -165,7 +168,7 @@ function parseExtensions(raw: unknown): ExtensionsConfig {
 }
 
 const settingsDocument = (settings: SettingsConfig) => ({ format_version: CONFIG_FORMAT_VERSION, theme: settings.theme, accent: settings.accent, background_limit: settings.backgroundLimit, sidebar_collapsed: settings.sidebarCollapsed });
-const workspacesDocument = (config: WorkspacesConfig) => ({ format_version: CONFIG_FORMAT_VERSION, active_workspace: config.activeWorkspaceId, workspace: config.workspaces.map(workspace => ({ id: workspace.id, name: workspace.name, startup_pages: workspace.startupPages })), session: config.sessions.map(session => ({ name: session.name, workspace: session.workspaceId, pages: session.pages })) });
+const workspacesDocument = (config: WorkspacesConfig) => ({ format_version: CONFIG_FORMAT_VERSION, active_workspace: config.activeWorkspaceId, active_session: config.activeSession, workspace: config.workspaces.map(workspace => ({ id: workspace.id, name: workspace.name, startup_pages: workspace.startupPages })), session: config.sessions.map(session => ({ name: session.name, workspace: session.workspaceId, pages: session.pages })) });
 const extensionsDocument = (config: ExtensionsConfig) => ({ format_version: CONFIG_FORMAT_VERSION, extension: config.extensions });
 
 export class ConfigStore {
