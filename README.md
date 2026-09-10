@@ -41,9 +41,12 @@ npm run verify
 npm run package:linux
 npm run package:mac
 npm run package:win
+npm run package:reproducible:container
 ```
 
 `verify` typechecks Svelte/TypeScript, runs unit tests, builds production assets, drives real Electron browser/privacy flows, and runs native unload and MV3 worker/content-script tests. Tests use sandboxed pages and disposable profiles; no test disables Chromium's sandbox. See [verification details](docs/testing.md) and [keyboard controls](docs/keyboard.md).
+
+The Linux x64 reproducible tarball is a complete runnable browser built inside a digest-pinned environment and canonicalized byte for byte. CI requires two independent builds to match before the verified-release workflow can publish it. Native installer formats are not mislabeled as reproducible. Follow [REPRODUCIBLE_BUILDS.md](REPRODUCIBLE_BUILDS.md) to rebuild and compare a release yourself.
 
 On Arch Linux, electron-builder's bundled Debian packager may require `libcrypt.so.1`. Install FPM with `gem install --user-install fpm --no-document`, then set `CUSTOM_FPM_PATH` to its absolute executable when packaging. This affects build tooling only.
 
@@ -58,7 +61,7 @@ The built-in assistant processes capped rendered text locally. No page content i
 ## Known limits
 
 - “Load unpacked” is supported; one-click Chrome Web Store installation is not. Electron implements only part of the Chrome extension API surface, and failures are shown rather than hidden.
-- Installers are reproducibly built in CI but are not backed by paid Windows publisher signing, Apple Developer ID signing or notarization.
+- Native installers are tested in CI but are not yet bit-reproducible and are not backed by paid Windows publisher signing, Apple Developer ID signing or notarization. The runnable Linux x64 tarball is independently reproducible.
 - Split layout does not persist or resize yet. Peek is intentionally transient.
 - The assistant is extractive, not generative or agentic; it does not fill forms or take actions.
 - The bundled tracker seed is a privacy baseline, not a substitute for a full maintained filter-list engine.
