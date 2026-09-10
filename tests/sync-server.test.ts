@@ -32,6 +32,7 @@ test('identity-free server stores opaque per-device envelopes and rejects replay
     const isolated = await (await fetch(`${origin}/v1/sync`, { headers: { authorization: `AstraSync ${stranger.authToken}` } })).json() as { blobs: unknown[] };
     assert.deepEqual(isolated.blobs, []);
     assert.equal((await fetch(`${origin}/v1/sync`)).status, 401);
+    assert.equal((await fetch(`${origin}/v1/sync/other-device`, { method: 'PUT', headers, body: JSON.stringify(first) })).status, 400);
   } finally {
     await new Promise<void>((resolve, reject) => (server as Server).close(error => error ? reject(error) : resolve()));
     rmSync(directory, { recursive: true, force: true });

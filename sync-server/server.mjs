@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: MPL-2.0
 import { createHash, randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
-import { chmodSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { isAbsolute, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const BODY_LIMIT = 12 * 1024 * 1024;
+const NAMESPACE_LIMIT = 32 * 1024 * 1024;
+const DEVICE_LIMIT = 32;
 const TOKEN = /^[a-zA-Z0-9_-]{43}$/;
 const DEVICE = /^[a-zA-Z0-9_-]{1,100}$/;
 const CIPHERTEXT = /^[a-zA-Z0-9_-]+$/;
@@ -57,7 +59,9 @@ export function createSyncServer(options = {}) {
       if (!owner) { json(response, 401, { error: 'A valid AstraSync key is required.' }); return; }
       const directory = join(dataDirectory, owner);
       if (request.method === 'GET' && url.pathname === '/v1/sync') {
-        const blobs = existsSync(directory) ? readdirSync(directory).filter(name => DEVICE.test(name.replace(/\.json$/, '')) && name.endsWith('.json')).sort().map(name => JSON.parse(readFileSync(join(directory, name), 'utf8'))) : [];
+        const names = existsSync(directory) ? readdirSync(directory).filter(name => DEVICE.test(name.replace(/\.json$/, '')) && name.endsWith('.json')).sort() : [];
+        if (names.length > DEVICE_LIMIT || names.reduce((total, name) => total + statSync(join(directory, name)).size, 0) > NAMESPACE_LIMIT) { json(response, 507, { error: 'Namespace storage limit exceeded.' }); return; }
+        const blobs = names.map(name => JSON.parse(readFileSync(join(directory, name), 'utf8')));
         json(response, 200, { version: 1, blobs }); return;
       }
       const match = /^\/v1\/sync\/([a-zA-Z0-9_-]{1,100})$/.exec(url.pathname);
@@ -66,12 +70,18 @@ export function createSyncServer(options = {}) {
         const next = envelope(await body(request), match[1]);
         mkdirSync(directory, { recursive: true, mode: 0o700 }); chmodSync(directory, 0o700);
         const path = join(directory, `${next.device}.json`);
+        const existingFiles = readdirSync(directory).filter(name => name.endsWith('.json'));
+        if (!existsSync(path) && existingFiles.length >= DEVICE_LIMIT) { json(response, 507, { error: 'Device limit exceeded.' }); return; }
         if (existsSync(path)) {
           const previous = envelope(JSON.parse(readFileSync(path, 'utf8')), next.device);
           if (previous.sequence >= next.sequence) { json(response, 409, { error: 'Sequence must increase.' }); return; }
         }
+        const encoded = JSON.stringify(next);
+        const previousSize = existsSync(path) ? statSync(path).size : 0;
+        const used = existingFiles.reduce((total, name) => total + statSync(join(directory, name)).size, 0);
+        if (used - previousSize + Buffer.byteLength(encoded) > NAMESPACE_LIMIT) { json(response, 507, { error: 'Namespace storage limit exceeded.' }); return; }
         const temporary = join(directory, `.${next.device}.${randomUUID()}.tmp`);
-        writeFileSync(temporary, JSON.stringify(next), { encoding: 'utf8', mode: 0o600, flag: 'wx' });
+        writeFileSync(temporary, encoded, { encoding: 'utf8', mode: 0o600, flag: 'wx' });
         renameSync(temporary, path); chmodSync(path, 0o600);
         json(response, 200, { stored: true, sequence: next.sequence }); return;
       }
