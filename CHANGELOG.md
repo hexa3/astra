@@ -5,6 +5,7 @@
 - Published Astra's eight evidence-backed pillars and an explicit retrospective separating verified v2 mechanisms from remaining institutional and platform-packaging work.
 - Shipped separate default and minimal reproducible Linux x64 release artifacts, assembled from one build with byte-identical packaged core executables and distinct allowlisted shell launchers.
 - Extended independent CI and published-release comparison to require byte equality for both official variants, with real packaged navigation and isolation smoke coverage for each shell.
+- Isolated packaged-release smoke checks from the caller's Astra dotfiles as well as its encrypted browser profile.
 - Bumped application and artifact metadata to 2.0.0 while preserving Core API 2.0 compatibility.
 
 ## 1.20.0 — 2026-09-10
