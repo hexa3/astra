@@ -152,3 +152,7 @@ Resumed the clean `hour21-official-variants` branch at `c63e07e` and checked the
 ## 2026-09-11 09:18 GST — packaged proof isolated from dotfiles
 
 A local launch of the reproduced default archive found that the packaged smoke check isolated the encrypted profile but still inherited the caller's ordinary Astra config directory. The saved collapsed-sidebar preference made the product behave correctly and the test make the wrong assertion. The verifier now gives both stores separate temporary paths, and a regression test keeps that boundary explicit. Both reproduced archives launch through their fixed wrapper, report the correct API 2.0 shell, render an isolated HTTP page, contain both licenses, and share byte-identical `astra-core` executables. The focused suite now passes all 58 tests.
+
+## 2026-09-11 09:30 GST — public release delivery check
+
+The tagged two-builder gate published all four `v2.0.0` assets, but GitHub correctly suppressed a second workflow event because the release was created with the repository's Actions token. The release workflow now performs the public download and byte comparison itself and is safe to rerun against an existing published release without replacing its assets. This closes the event-chain gap instead of relying on a `release` hook that is useful for externally published releases but cannot attest to an Actions-created one.

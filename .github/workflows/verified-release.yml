@@ -95,15 +95,32 @@ jobs:
         with:
           name: verified-${{ inputs.release_tag }}
           path: verified
-      - name: Create a draft, upload verified bytes, then publish
+      - name: Publish once and verify the public bytes
         run: |
           RELEASE_NOTES="docs/releases/${RELEASE_TAG}.md"
           test -f "$RELEASE_NOTES"
+          RELEASE_STATE=new
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" = true
+            if test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" = true; then
+              RELEASE_STATE=draft
+            else
+              RELEASE_STATE=published
+            fi
+          fi
+          if test "$RELEASE_STATE" = draft; then
             gh release edit "$RELEASE_TAG" --notes-file "$RELEASE_NOTES"
-          else
+          elif test "$RELEASE_STATE" = new; then
             gh release create "$RELEASE_TAG" --draft --notes-file "$RELEASE_NOTES" --title "Astra ${RELEASE_TAG#v}"
           fi
-          gh release upload "$RELEASE_TAG" verified/* --clobber
-          gh release edit "$RELEASE_TAG" --draft=false
+          if test "$RELEASE_STATE" != published; then
+            gh release upload "$RELEASE_TAG" verified/* --clobber
+            gh release edit "$RELEASE_TAG" --draft=false
+          fi
+          mkdir published
+          gh release download "$RELEASE_TAG" --pattern '*-reproducible.tar.gz' --pattern '*.sha256' --dir published
+          for archive in verified/*.tar.gz; do
+            npm run verify:reproducible -- "$archive" "published/$(basename "$archive")"
+          done
+          for manifest in verified/*.sha256; do
+            cmp "$manifest" "published/$(basename "$manifest")"
+          done

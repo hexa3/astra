@@ -53,7 +53,7 @@ The Docker image itself is not a release artifact and need not have a stable ima
 
 `.github/workflows/reproducible.yml` builds both variants on two separate clean GitHub runners and fails unless every archive byte and emitted manifest match. On a published-release event, it also downloads both public assets and compares each with the corresponding source rebuild.
 
-Releases use the manual `Verify and publish reproducible release` workflow. Given an existing semantic-version tag, two independent jobs rebuild it. The publish job cannot run unless their bytes match; only that final job receives `contents: write`, uploads the verified result to a draft, and then publishes it. A maintainer cannot obtain a green result by supplying an expected hash.
+Releases use the manual `Verify and publish reproducible release` workflow. Given an existing semantic-version tag, two independent jobs rebuild it. The publish job cannot run unless their bytes match; only that final job receives `contents: write`, uploads the verified result to a draft, publishes it, downloads the public assets, and compares every archive and manifest again. Rerunning the job against an existing public release is non-mutating and repeats that final comparison. A maintainer cannot obtain a green result by supplying an expected hash.
 
 ## Reproduce without Docker
 
