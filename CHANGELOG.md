@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.0.0 — 2026-09-10
+## 2.0.0 — 2026-09-11
 
 - Published Astra's eight evidence-backed pillars and an explicit retrospective separating verified v2 mechanisms from remaining institutional and platform-packaging work.
 - Shipped separate default and minimal reproducible Linux x64 release artifacts, assembled from one build with byte-identical packaged core executables and distinct allowlisted shell launchers.

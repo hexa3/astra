@@ -97,10 +97,13 @@ jobs:
           path: verified
       - name: Create a draft, upload verified bytes, then publish
         run: |
+          RELEASE_NOTES="docs/releases/${RELEASE_TAG}.md"
+          test -f "$RELEASE_NOTES"
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" = true
+            gh release edit "$RELEASE_TAG" --notes-file "$RELEASE_NOTES"
           else
-            gh release create "$RELEASE_TAG" --draft --generate-notes --title "Astra ${RELEASE_TAG#v}"
+            gh release create "$RELEASE_TAG" --draft --notes-file "$RELEASE_NOTES" --title "Astra ${RELEASE_TAG#v}"
           fi
           gh release upload "$RELEASE_TAG" verified/* --clobber
           gh release edit "$RELEASE_TAG" --draft=false
