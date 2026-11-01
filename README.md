@@ -106,3 +106,7 @@ The built-in assistant processes capped rendered text locally. No page content i
 Forks and replacement modules are welcome. No contributor agreement, account, monetization gate or proprietary service is required. See [CONTRIBUTING.md](CONTRIBUTING.md) for the engineering path and [GOVERNANCE.md](GOVERNANCE.md) for public RFCs, maintainer eligibility, votes, appeals, conflicts and the automatic end of single-maintainer bootstrap. Astra states plainly that it is not yet an incorporated foundation or elected multi-person council.
 
 [FUNDING.md](FUNDING.md) defines the only permitted donation, grant and enterprise-support paths and excludes ads, search placement, data revenue and paid governance. Intake remains closed until a transparent legal recipient and payment rail pass the protected vote; the public treasury therefore starts at exactly zero. See the [build log](docs/progress-log.md) for the implementation record.
+
+---
+
+<p align="center">Built by <a href="https://sheheryar.xyz">Sheheryar</a> · <a href="https://github.com/hexa3">github.com/hexa3</a></p>
